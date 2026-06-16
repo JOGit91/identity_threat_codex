@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M365 Identity Threat Codex</title>
+  <meta name="description" content="A defender's reference for modern Microsoft 365 attacks — covering TTPs, detection queries, threat actors, and hardening guidance for each named attack.">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="index.html" class="active">Attacks</a>
+      <a href="#about">About</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">For Defenders</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-eyebrow">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+    M365 Threat Intelligence
+  </div>
+  <h1>The <em>M365 Identity</em><br>Threat Codex</h1>
+  <p class="hero-sub">
+    One place to understand every major attack targeting Microsoft 365. Know what it is, how to hunt for it, who's doing it, and how to stop it.
+  </p>
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input
+      id="attack-search"
+      type="search"
+      placeholder="Search attacks, techniques, threat actors..."
+      autocomplete="off"
+      spellcheck="false"
+    >
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <span class="stat-number">2</span>
+      <span class="stat-label">Attacks Documented</span>
+    </div>
+    <div class="hero-stat">
+      <span class="stat-number">8+</span>
+      <span class="stat-label">KQL Hunt Queries</span>
+    </div>
+    <div class="hero-stat">
+      <span class="stat-number">6</span>
+      <span class="stat-label">Threat Actors Profiled</span>
+    </div>
+    <div class="hero-stat">
+      <span class="stat-number">Jun 2025</span>
+      <span class="stat-label">Last Updated</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── ATTACK GRID ───────────────────────────────────────────── -->
+<section class="attacks-section">
+  <div class="section-toolbar">
+    <span class="section-label">All Attacks</span>
+    <div class="filter-chips">
+      <span class="chip active" data-filter="all">All</span>
+      <span class="chip" data-filter="credential-access">Credential Access</span>
+      <span class="chip" data-filter="initial-access">Initial Access</span>
+      <span class="chip" data-filter="social-engineering">Social Engineering</span>
+    </div>
+  </div>
+
+  <div class="attacks-grid">
+
+    <!-- ── Session Token Theft ── -->
+    <a
+      class="attack-card"
+      href="attacks/session-token-theft.html"
+      data-searchable="session token theft aitm cookie hijack mfa bypass oauth pass the cookie scattered spider midnight blizzard apt29 credential access defense evasion"
+      data-categories="credential-access"
+    >
+      <div class="card-header">
+        <div class="card-name">Session Token Theft</div>
+        <span class="sev-badge sev-critical">Critical</span>
+      </div>
+      <div class="card-category">Credential Access &middot; Defense Evasion</div>
+      <p class="card-desc">
+        Attackers steal authentication tokens directly from a victim's browser after MFA has already been completed, bypassing multi-factor authentication entirely and gaining full access to M365 services.
+      </p>
+      <div class="card-tags">
+        <span class="tag">AiTM</span>
+        <span class="tag">Pass-the-Cookie</span>
+        <span class="tag">MFA Bypass</span>
+        <span class="tag">OAuth</span>
+        <span class="tag">Token Replay</span>
+        <span class="tag">Evilginx</span>
+      </div>
+      <div class="card-footer">
+        <span>MITRE T1539 &middot; T1550.001</span>
+        <span class="card-link">View profile &rarr;</span>
+      </div>
+    </a>
+
+    <!-- ── MS Teams Impersonation ── -->
+    <a
+      class="attack-card"
+      href="attacks/ms-teams-impersonation.html"
+      data-searchable="microsoft teams impersonation vishing social engineering helpdesk it support phishing malware delivery external messaging scattered spider midnight blizzard storm-0324 black basta initial access"
+      data-categories="initial-access social-engineering"
+    >
+      <div class="card-header">
+        <div class="card-name">MS Teams Impersonation</div>
+        <span class="sev-badge sev-critical">Critical</span>
+      </div>
+      <div class="card-category">Initial Access &middot; Social Engineering</div>
+      <p class="card-desc">
+        Threat actors abuse Microsoft Teams' trusted messaging channel to impersonate IT staff, executives, or Microsoft Support &mdash; delivering malware, harvesting credentials, and manipulating victims into approving MFA requests.
+      </p>
+      <div class="card-tags">
+        <span class="tag">Teams</span>
+        <span class="tag">Vishing</span>
+        <span class="tag">Social Engineering</span>
+        <span class="tag">Helpdesk Fraud</span>
+        <span class="tag">External Messaging</span>
+        <span class="tag">Malware Delivery</span>
+      </div>
+      <div class="card-footer">
+        <span>MITRE T1566 &middot; T1534</span>
+        <span class="card-link">View profile &rarr;</span>
+      </div>
+    </a>
+
+  </div><!-- /attacks-grid -->
+
+  <!-- Coming soon placeholder -->
+  <div style="margin-top: 32px; padding: 32px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: var(--radius); text-align: center;">
+    <div style="font-size: 13px; font-weight: 600; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Coming Soon</div>
+    <div style="font-size: 14px; color: var(--text-muted);">
+      Device Code Phishing &nbsp;&middot;&nbsp; OAuth Consent Abuse &nbsp;&middot;&nbsp; MFA Fatigue / Push Bombing &nbsp;&middot;&nbsp; Adversary-in-the-Middle Phishing &nbsp;&middot;&nbsp; Mailbox Rule Manipulation
+    </div>
+  </div>
+
+</section>
+
+<!-- ── ABOUT ─────────────────────────────────────────────────── -->
+<section id="about" style="background: var(--surface); border-top: 1px solid var(--border); padding: 56px 24px;">
+  <div style="max-width: 680px; margin: 0 auto;">
+    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 12px;">About This Resource</div>
+    <h2 style="font-size: 22px; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 16px;">Built for defenders and M365 admins</h2>
+    <p style="font-size: 15px; color: var(--text-muted); line-height: 1.75; margin-bottom: 14px;">
+      Threat information targeting Microsoft 365 environments moves fast. New attack techniques, new threat actors, new tooling &mdash; it's difficult to build a coherent picture of what you're actually up against.
+    </p>
+    <p style="font-size: 15px; color: var(--text-muted); line-height: 1.75; margin-bottom: 14px;">
+      This codex documents each known attack technique in depth: what it is, how it works, what evidence it leaves behind, who uses it, and most importantly &mdash; what you can do about it. Each entry is designed to be actionable, not just educational.
+    </p>
+    <p style="font-size: 15px; color: var(--text-muted); line-height: 1.75;">
+      Hunt queries are written for <strong>Microsoft Sentinel</strong> and <strong>Microsoft Defender XDR</strong>. Prevention guidance is prioritized so you know where to start.
+    </p>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/jogit91/identity_threat_codex/issues" target="_blank" rel="noopener">Suggest an Attack</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/main.js"></script>
+</body>
+</html>

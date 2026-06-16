@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Token Theft &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="Everything defenders need to know about session token theft in Microsoft 365: how it works, detection queries, threat actors, and hardening steps.">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="../index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="../index.html">Attacks</a>
+      <a href="../index.html#about">About</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">For Defenders</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ───────────────────────────────────────────────── -->
+<div class="attack-page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="attack-sidebar">
+    <a class="toc-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      All Attacks
+    </a>
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+      <li><a href="#why-used"><span class="toc-num">02</span> Why Attackers Use It</a></li>
+      <li><a href="#impact"><span class="toc-num">03</span> Impact</a></li>
+      <li><a href="#detection"><span class="toc-num">04</span> Detection &amp; Hunting</a></li>
+      <li><a href="#threat-actors"><span class="toc-num">05</span> Threat Actors</a></li>
+      <li><a href="#follow-on"><span class="toc-num">06</span> Follow-on Activity</a></li>
+      <li><a href="#prevention"><span class="toc-num">07</span> Prevention</a></li>
+      <li><a href="#resources"><span class="toc-num">08</span> Resources</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="attack-content">
+
+    <div class="attack-breadcrumb">
+      <a href="../index.html">M365 Identity Threat Codex</a>
+      <span class="sep">&rsaquo;</span>
+      <span>Session Token Theft</span>
+    </div>
+
+    <header class="attack-header">
+      <h1 class="attack-title">Session Token Theft</h1>
+      <div class="attack-meta">
+        <span class="sev-badge sev-critical">Critical</span>
+        <span class="meta-pill">Credential Access</span>
+        <span class="meta-pill">Defense Evasion</span>
+        <span class="meta-pill mitre">T1539</span>
+        <span class="meta-pill mitre">T1550.001</span>
+        <span class="meta-pill">Updated Jun 2025</span>
+      </div>
+      <p class="attack-summary">
+        Session token theft — also known as pass-the-cookie, AiTM (Adversary-in-the-Middle), or token hijacking — allows attackers to steal authenticated session tokens after a victim has already passed MFA, granting them full access to Microsoft 365 services without ever knowing the user's password.
+      </p>
+    </header>
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section id="overview" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        What is Session Token Theft?
+        <span class="section-num">01</span>
+      </h2>
+
+      <p>
+        Modern web applications — including every Microsoft 365 service — authenticate users using <strong>session tokens</strong>: short-lived cryptographic strings that are issued after a successful login. Once issued, these tokens act as proof of identity and are presented with every subsequent request. This is what keeps you logged in to Outlook or SharePoint without being asked for your password every few minutes.
+      </p>
+      <p>
+        The critical insight attackers exploit is this: <strong>a valid token is as good as a valid login</strong>. If an attacker can steal your session token, they don't need your password, they don't need to know your MFA method, and they don't need to solve any authentication challenge. They simply replay the stolen token to Microsoft's servers, which respond exactly as they would to you — granting full authenticated access.
+      </p>
+      <p>
+        Token theft happens through several delivery mechanisms:
+      </p>
+      <ul>
+        <li><strong>Adversary-in-the-Middle (AiTM) phishing:</strong> The attacker stands up a reverse proxy (using tools like Evilginx2, EvilProxy, or Modlishka) that sits between the victim and the real Microsoft login page. The victim authenticates — including completing MFA — against the real Microsoft server, but all traffic flows through the attacker's proxy, which captures the resulting session cookie.</li>
+        <li><strong>Malware-based extraction:</strong> Infostealer malware (Redline, Raccoon, Vidar) running on a victim's device extracts session cookies directly from browser storage, where they are stored in plaintext or easily decryptable formats.</li>
+        <li><strong>Browser extension abuse:</strong> Malicious browser extensions can read and exfiltrate cookies for any domain the victim visits.</li>
+        <li><strong>Token theft from memory / disk:</strong> On corporate devices, tokens may be cached in MSAL (Microsoft Authentication Library) token caches, which can be extracted by attackers with local access.</li>
+      </ul>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">Why MFA Doesn't Stop This</span>
+        <p>MFA protects the <em>authentication event</em>. Once authentication succeeds and a token is issued, MFA has already done its job. A stolen token carries the proof that MFA was already satisfied — so the attacker never needs to trigger another MFA challenge.</p>
+      </div>
+    </section>
+
+    <!-- ── 02 WHY USED ── -->
+    <section id="why-used" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        Why Do Threat Actors Use It?
+        <span class="section-num">02</span>
+      </h2>
+
+      <ul>
+        <li><strong>It completely bypasses MFA.</strong> This is the primary draw. The vast majority of M365 security guidance tells organizations to enable MFA — and that advice is correct. But token theft exploits the gap between authentication and authorization, rendering MFA irrelevant once a session is established.</li>
+        <li><strong>Tokens are long-lived.</strong> Microsoft 365 refresh tokens can be valid for up to 90 days by default. Even access tokens (shorter-lived, typically 60-90 minutes) can be used immediately for high-value actions. Refresh tokens can silently mint new access tokens without the user's involvement.</li>
+        <li><strong>No noisy credential attacks.</strong> Brute force and password spraying generate failed authentication attempts that are easy to alert on. Token theft produces successful sign-ins that look legitimate.</li>
+        <li><strong>Tooling is widely available.</strong> Evilginx2, EvilProxy, Modlishka, and Muraena are all open-source or commercially available AiTM toolkits. They require minimal technical skill to deploy and can be had for a few hundred dollars in underground markets.</li>
+        <li><strong>Works against all M365 services.</strong> A stolen Microsoft session token grants access to Exchange Online, SharePoint, Teams, OneDrive, Azure Portal, and any other service the victim has access to under the same tenant.</li>
+        <li><strong>High ROI for BEC campaigns.</strong> Business Email Compromise is one of the highest-ROI fraud categories in cybercrime. A single successful token theft from a finance employee or executive can yield hundreds of thousands of dollars in wire fraud.</li>
+      </ul>
+    </section>
+
+    <!-- ── 03 IMPACT ── -->
+    <section id="impact" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        What Happens If Attackers Succeed?
+        <span class="section-num">03</span>
+      </h2>
+
+      <h3>Immediate Access</h3>
+      <ul>
+        <li><strong>Exchange Online (email):</strong> Full read/write access to the victim's inbox. Attackers immediately search for keywords like "wire transfer," "invoice," "password," "CEO," and "bank account."</li>
+        <li><strong>SharePoint &amp; OneDrive:</strong> Access to all documents the victim can reach — including shared drives, financial records, legal documents, HR data, and client information.</li>
+        <li><strong>Microsoft Teams:</strong> Access to all Teams conversations, channels, and files. Attackers can read historical messages and use the victim's identity to send messages to colleagues.</li>
+        <li><strong>Azure Portal / Entra ID:</strong> If the victim is a privileged user (Global Admin, Application Admin, etc.), the attacker gains access to the entire tenant, including the ability to add new admin accounts.</li>
+      </ul>
+
+      <h3>Persistence &amp; Escalation</h3>
+      <ul>
+        <li><strong>Inbox rules:</strong> Attackers immediately create forwarding or deletion rules to hide security alert emails and forward copies of email to external addresses.</li>
+        <li><strong>New device registration:</strong> Adding a new Entra ID-joined or registered device allows the attacker to obtain fresh tokens tied to a device they control, surviving a password reset.</li>
+        <li><strong>New MFA methods:</strong> If Entra ID Protection policies allow, attackers register new authenticator apps or phone numbers, locking the victim out.</li>
+        <li><strong>OAuth app consent:</strong> Granting a malicious OAuth application consent to the victim's account creates persistent token-based access that survives password resets.</li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <span class="callout-title">Password Reset Does Not Revoke Tokens by Default</span>
+        <p>If a victim's password is reset without also revoking all active sessions in Entra ID, existing stolen tokens may remain valid. Always use <strong>Revoke-AzureADUserAllRefreshToken</strong> (or the Entra portal equivalent) as part of incident response.</p>
+      </div>
+
+      <h3>Financial &amp; Downstream Impact</h3>
+      <ul>
+        <li>Wire fraud via email impersonation of the compromised account</li>
+        <li>Invoice manipulation targeting finance teams and vendors</li>
+        <li>Data exfiltration for extortion or sale</li>
+        <li>Supply chain compromise: using the victim's account to attack their customers and partners</li>
+        <li>Ransomware deployment following lateral movement within the tenant</li>
+      </ul>
+    </section>
+
+    <!-- ── 04 DETECTION ── -->
+    <section id="detection" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        Detection &amp; Threat Hunting
+        <span class="section-num">04</span>
+      </h2>
+
+      <h3>Log Sources</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What to Look For</th>
+              <th>Table (Sentinel)</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-source">Entra ID Sign-in Logs</td>
+              <td>Sign-ins from new countries/IPs, impossible travel, MFA "previously satisfied" claims, token replay indicators</td>
+              <td><code class="inline">SigninLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Protection</td>
+              <td><strong>Anomalous Token</strong> risk events, impossible travel risk, unfamiliar sign-in properties</td>
+              <td><code class="inline">AADUserRiskEvents</code></td>
+              <td><span class="req-badge req-p1">P2 Required</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">M365 Unified Audit Log</td>
+              <td>New inbox rules (<code class="inline">New-InboxRule</code>), mail forwarding changes, file access from unusual locations</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Audit Logs</td>
+              <td>New device registrations, MFA method additions, role assignments, app consent grants</td>
+              <td><code class="inline">AuditLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Defender for Cloud Apps</td>
+              <td>Impossible travel alerts, mass download activity, session token anomalies</td>
+              <td><code class="inline">CloudAppEvents</code></td>
+              <td><span class="req-badge req-p2">MDCA License</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-title">Prerequisite: Enable Entra ID Protection</span>
+        <p>The single most impactful detection for token theft is the <strong>"Anomalous Token"</strong> risk event in Entra ID Protection. It detects tokens being used from unusual locations, devices, or with anomalous claims. This requires an Entra ID P2 (or Microsoft 365 E5 / E5 Security) license.</p>
+      </div>
+
+      <h3>Hunt Query 1 — Anomalous Token Risk Events</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; AADUserRiskEvents</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Entra ID Protection: Anomalous Token risk events
+// Requires Entra ID P2 license. High-fidelity signal for token theft.
+AADUserRiskEvents
+| where TimeGenerated > ago(7d)
+| where RiskEventType == "anomalousToken"
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    RiskLevel,
+    RiskDetail,
+    IpAddress,
+    Location,
+    AdditionalInfo
+| order by RiskLevel asc, TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 2 — Impossible Travel &amp; Risk Events in Sign-in Logs</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Sign-ins flagged with high-risk signals
+// Catches token replay, impossible travel, and unfamiliar properties
+SigninLogs
+| where TimeGenerated > ago(7d)
+| where ResultType == 0                       // Successful sign-ins only
+| where RiskEventTypes_V2 has_any (
+    "anomalousToken",
+    "impossibleTravel",
+    "unfamiliarFeatures",
+    "anonymizedIPAddress",
+    "maliciousIPAddress"
+  )
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    AppDisplayName,
+    IPAddress,
+    Location,
+    RiskEventTypes_V2,
+    AuthenticationRequirement,
+    IsCompliant,
+    DeviceDetail,
+    ConditionalAccessStatus
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 3 — Suspicious Inbox Rules Post Sign-in</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Inbox rules with attacker-typical parameters
+// Attackers create these immediately after access to hide security alerts
+// and forward email copies to external addresses
+OfficeActivity
+| where TimeGenerated > ago(14d)
+| where Operation in ("New-InboxRule", "Set-InboxRule")
+| extend Params = todynamic(Parameters)
+| mv-expand Params
+| where Params.Name in~ (
+    "DeleteMessage",
+    "ForwardTo",
+    "RedirectTo",
+    "MoveToFolder",
+    "ForwardAsAttachmentTo",
+    "MarkAsRead"
+  )
+| project
+    TimeGenerated,
+    UserId,
+    ClientIP,
+    Operation,
+    RuleName = tostring(Params.Name),
+    RuleValue = tostring(Params.Value)
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 4 — MFA "Previously Satisfied" on Non-Compliant Devices</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Token replay indicator: MFA satisfied by prior session
+// on a device not recognized as compliant.
+// Legitimate replay is normal; flag when combined with new/unknown device.
+SigninLogs
+| where TimeGenerated > ago(7d)
+| where ResultType == 0
+| where AuthenticationDetails has "Previously satisfied"
+| where IsCompliant == false or IsCompliant == ""
+| extend DeviceId = tostring(DeviceDetail.deviceId)
+| where isempty(DeviceId)                     // No device identity — suspicious
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    AppDisplayName,
+    IPAddress,
+    Location,
+    AuthenticationRequirement,
+    ConditionalAccessStatus,
+    DeviceDetail
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 05 THREAT ACTORS ── -->
+    <section id="threat-actors" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        Known Threat Actors
+        <span class="section-num">05</span>
+      </h2>
+
+      <p>The following threat actors have been publicly documented using session token theft and AiTM techniques against Microsoft 365 environments.</p>
+
+      <div class="actor-grid">
+
+        <div class="actor-card">
+          <div class="actor-name">Scattered Spider</div>
+          <div class="actor-aka">UNC3944 &middot; Muddled Libra &middot; 0ktapus</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-criminal">Cybercriminal</span>
+          </div>
+          <div class="actor-notes">
+            Prolific English-speaking cybercriminal group with extensive AiTM phishing operations. Known for calling IT helpdesks while simultaneously performing token theft, and for bypassing Okta and Entra ID MFA at scale. Responsible for major attacks on MGM Resorts, Caesars, and numerous financial and technology firms.
+          </div>
+        </div>
+
+        <div class="actor-card">
+          <div class="actor-name">Midnight Blizzard</div>
+          <div class="actor-aka">APT29 &middot; Cozy Bear &middot; NOBELIUM</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-nation">Nation-State (Russia)</span>
+          </div>
+          <div class="actor-notes">
+            Russian SVR-linked group known for sophisticated, persistent intrusions. In the 2024 Microsoft breach, used password spraying followed by legacy token abuse to compromise Microsoft corporate accounts. Routinely uses OAuth application-based token persistence across M365 tenants.
+          </div>
+        </div>
+
+        <div class="actor-card">
+          <div class="actor-name">Storm-1167</div>
+          <div class="actor-aka">Caffeine &middot; Various BEC Groups</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-criminal">Cybercriminal</span>
+          </div>
+          <div class="actor-notes">
+            Operates a large-scale AiTM-as-a-service phishing platform sold to other criminal actors. Primarily motivated by Business Email Compromise and financial fraud. Targets Microsoft 365 accounts at volume; documented in Microsoft Threat Intelligence publications from 2022–2024.
+          </div>
+        </div>
+
+        <div class="actor-card">
+          <div class="actor-name">EvilProxy Operators</div>
+          <div class="actor-aka">Commercial AiTM Platform</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-criminal">Cybercriminal</span>
+          </div>
+          <div class="actor-notes">
+            EvilProxy is a commercial reverse-proxy phishing platform specifically designed to steal session cookies from M365, Google, and other services. Sold via dark web forums and Telegram. Used by many independent threat actors; the platform abstracts away the technical complexity of AiTM attacks.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── 06 FOLLOW-ON ── -->
+    <section id="follow-on" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+        </span>
+        Typical Follow-on Activity
+        <span class="section-num">06</span>
+      </h2>
+
+      <p>Once an attacker has a valid session token, there is a predictable playbook they follow. The speed of this progression is alarming — in documented incidents, attackers complete steps 1–5 within minutes of gaining access.</p>
+
+      <ol>
+        <li>
+          <strong>Immediate reconnaissance</strong> &mdash; Search inbox for keywords ("wire transfer," "password," "bank," "invoice," "CEO," "ACH"). Download the Global Address List. Enumerate SharePoint sites and document libraries.
+        </li>
+        <li>
+          <strong>Create inbox rules</strong> &mdash; Set rules to delete or move security alert emails (from Microsoft, your SIEM, your IT team) to Deleted Items or a hidden folder. Optionally set up forwarding to an external account.
+        </li>
+        <li>
+          <strong>Establish persistence</strong> &mdash; Register a new device in Entra ID, add a new MFA authenticator, or grant an OAuth application consent to maintain access even after a password reset.
+        </li>
+        <li>
+          <strong>Business Email Compromise (BEC)</strong> &mdash; Impersonate the victim to contact finance teams, vendors, or executives. Request urgent wire transfers, invoice payment changes, or W-2/payroll diversions.
+        </li>
+        <li>
+          <strong>Data exfiltration</strong> &mdash; Bulk download of SharePoint documents, Teams exports, OneDrive contents. Particularly interested in M&amp;A activity, financial forecasts, intellectual property, and client data.
+        </li>
+        <li>
+          <strong>Lateral movement</strong> &mdash; Use the victim's identity to pivot: phish colleagues via Teams or email, access shared mailboxes, or — if the victim is an admin — make tenant-level configuration changes.
+        </li>
+        <li>
+          <strong>Extortion or sale</strong> &mdash; Exfiltrated data may be held for ransom, sold on dark web markets, or used to enable further attacks against the victim's customers and partners.
+        </li>
+      </ol>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">Supply Chain Risk</span>
+        <p>A compromised M365 account is a trusted launchpad for attacking everyone that account communicates with. Outbound phishing from a trusted domain has dramatically higher click rates. Threat actors use compromised accounts to target partners, customers, and vendors &mdash; multiplying the blast radius of a single token theft.</p>
+      </div>
+    </section>
+
+    <!-- ── 07 PREVENTION ── -->
+    <section id="prevention" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/><polyline points="9 12 11 14 15 10"/></svg>
+        </span>
+        Prevention &amp; Hardening
+        <span class="section-num">07</span>
+      </h2>
+
+      <p>Prevention is layered. P1 items directly prevent token theft or limit its impact. P2 items detect and respond faster. P3 items reduce what an attacker can do once inside.</p>
+
+      <ul class="prevention-list">
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Deploy Phishing-Resistant MFA (FIDO2 / Windows Hello for Business)</div>
+            <div class="prev-desc">FIDO2 security keys and Windows Hello for Business are bound to the specific origin (domain) at registration. An AiTM proxy cannot replay or forward these credentials because the cryptographic proof is origin-locked. This is the only MFA method that stops AiTM phishing by design. Roll out to privileged accounts immediately, then all users.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Enable Conditional Access Token Protection (Token Binding)</div>
+            <div class="prev-desc">Token Protection binds access tokens to the specific device and session where they were issued. A token stolen and replayed from a different device will be rejected by Entra ID. Configure via Conditional Access &rarr; Session controls &rarr; "Require token protection for sign-in sessions." Currently in GA for specific apps; coverage expanding.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Enable Entra ID Protection &amp; Sign-in Risk Policies (P2)</div>
+            <div class="prev-desc">Configure risk-based Conditional Access policies that require step-up authentication or block access when Entra ID Protection detects "Anomalous Token," "Impossible Travel," or "High" user risk. This is the primary real-time detection and enforcement mechanism for token theft. Requires Entra ID P2 or M365 E5.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Enable Continuous Access Evaluation (CAE)</div>
+            <div class="prev-desc">CAE allows Entra ID to revoke tokens in near-real-time (within minutes) when a critical event occurs — such as a password reset, account disable, or IP change that violates policy. Without CAE, stolen access tokens remain valid until they naturally expire. CAE is available at no extra cost but must be enabled in Conditional Access.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Configure Sign-in Risk Conditional Access Policies</div>
+            <div class="prev-desc">Create Conditional Access policies that block or require re-authentication when sign-in risk is Medium or High. Scope to all users and all cloud apps. Even without P2, consider Named Locations to block sign-ins from countries you don't operate in.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Reduce Token Lifetimes &amp; Enable Strict Reauthentication</div>
+            <div class="prev-desc">In Conditional Access session controls, reduce the sign-in frequency for sensitive apps and privileged users. Disabling "Persistent Browser Session" forces reauthentication after browser closure, reducing the window a stolen token is useful. Balance usability — apply strict settings to privileged accounts first.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Restrict MFA Method Registration with Conditional Access</div>
+            <div class="prev-desc">Require that MFA registration only occurs from compliant, Entra ID-joined devices, or require re-verification of existing MFA before adding new methods. This prevents attackers who have gained token access from registering new authenticators to maintain persistence through a password reset.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Alert on New Inbox Rules with Suspicious Parameters</div>
+            <div class="prev-desc">Configure Sentinel or Defender alerts to fire when inbox rules are created with <code class="inline">DeleteMessage</code>, <code class="inline">ForwardTo</code>, or <code class="inline">RedirectTo</code> parameters. This is almost always the first detectable post-compromise action attackers take, and catching it fast limits damage.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p3">P3</span>
+          <div class="prev-body">
+            <div class="prev-title">Require Compliant Device for High-Sensitivity Apps</div>
+            <div class="prev-desc">Conditional Access policies that require device compliance or Hybrid Azure AD join for access to Exchange Online and SharePoint significantly increase the friction for attackers using stolen tokens from personal or unmanaged devices.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p3">P3</span>
+          <div class="prev-body">
+            <div class="prev-title">Block Legacy Authentication Protocols</div>
+            <div class="prev-desc">Legacy protocols (IMAP, POP3, SMTP AUTH, basic auth) do not support MFA or Conditional Access and are frequently abused for token-independent credential access. Block them in Exchange Online and Conditional Access. Microsoft has deprecated basic auth for most services, but verify your tenant configuration.</div>
+          </div>
+        </li>
+
+      </ul>
+    </section>
+
+    <!-- ── 08 RESOURCES ── -->
+    <section id="resources" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </span>
+        External Resources
+        <span class="section-num">08</span>
+      </h2>
+
+      <ul class="resource-list">
+
+        <a class="resource-item" href="https://www.microsoft.com/en-us/security/blog/2022/07/12/from-cookie-theft-to-bec-attackers-use-aitm-phishing-sites-as-entry-point-to-further-financial-fraud/" target="_blank" rel="noopener">
+          <div class="resource-source-icon">MSFT</div>
+          <div class="resource-body">
+            <div class="resource-title">From cookie theft to BEC: Attackers use AiTM phishing sites as entry point to further financial fraud</div>
+            <div class="resource-meta">Microsoft Security Blog &middot; Jul 2022 <span class="resource-type">Blog</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://www.microsoft.com/en-us/security/blog/2022/11/16/token-tactics-how-to-prevent-detect-and-respond-to-cloud-token-theft/" target="_blank" rel="noopener">
+          <div class="resource-source-icon">MSFT</div>
+          <div class="resource-body">
+            <div class="resource-title">Token tactics: How to prevent, detect, and respond to cloud token theft</div>
+            <div class="resource-meta">Microsoft Security Blog &middot; Nov 2022 <span class="resource-type">Blog</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-token-protection" target="_blank" rel="noopener">
+          <div class="resource-source-icon">Docs</div>
+          <div class="resource-body">
+            <div class="resource-title">Conditional Access: Token protection (preview)</div>
+            <div class="resource-meta">Microsoft Learn &middot; Entra ID Documentation <span class="resource-type">Docs</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://www.cisa.gov/sites/default/files/2023-10/StopRansomware_Scattered_Spider_AA23-291A.pdf" target="_blank" rel="noopener">
+          <div class="resource-source-icon">CISA</div>
+          <div class="resource-body">
+            <div class="resource-title">#StopRansomware: Scattered Spider (AA23-291A)</div>
+            <div class="resource-meta">CISA &middot; FBI &middot; Oct 2023 <span class="resource-type">Advisory</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-continuous-access-evaluation" target="_blank" rel="noopener">
+          <div class="resource-source-icon">Docs</div>
+          <div class="resource-body">
+            <div class="resource-title">Continuous Access Evaluation in Microsoft Entra ID</div>
+            <div class="resource-meta">Microsoft Learn &middot; Entra ID Documentation <span class="resource-type">Docs</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://www.microsoft.com/en-us/security/blog/2024/01/25/midnight-blizzard-guidance-for-responders-on-nation-state-attack/" target="_blank" rel="noopener">
+          <div class="resource-source-icon">MSFT</div>
+          <div class="resource-body">
+            <div class="resource-title">Midnight Blizzard: Guidance for responders on nation-state attack</div>
+            <div class="resource-meta">Microsoft Security Blog &middot; Jan 2024 <span class="resource-type">Blog</span></div>
+          </div>
+        </a>
+
+      </ul>
+    </section>
+
+  </main><!-- /attack-content -->
+</div><!-- /attack-page -->
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="../index.html">All Attacks</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/main.js"></script>
+</body>
+</html>

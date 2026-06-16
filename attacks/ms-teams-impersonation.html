@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MS Teams Impersonation &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="Everything defenders need to know about Microsoft Teams impersonation attacks: how it works, detection queries, threat actors, and hardening steps.">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="../index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="../index.html">Attacks</a>
+      <a href="../index.html#about">About</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">For Defenders</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ───────────────────────────────────────────────── -->
+<div class="attack-page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="attack-sidebar">
+    <a class="toc-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      All Attacks
+    </a>
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+      <li><a href="#why-used"><span class="toc-num">02</span> Why Attackers Use It</a></li>
+      <li><a href="#impact"><span class="toc-num">03</span> Impact</a></li>
+      <li><a href="#detection"><span class="toc-num">04</span> Detection &amp; Hunting</a></li>
+      <li><a href="#threat-actors"><span class="toc-num">05</span> Threat Actors</a></li>
+      <li><a href="#follow-on"><span class="toc-num">06</span> Follow-on Activity</a></li>
+      <li><a href="#prevention"><span class="toc-num">07</span> Prevention</a></li>
+      <li><a href="#resources"><span class="toc-num">08</span> Resources</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="attack-content">
+
+    <div class="attack-breadcrumb">
+      <a href="../index.html">M365 Identity Threat Codex</a>
+      <span class="sep">&rsaquo;</span>
+      <span>MS Teams Impersonation</span>
+    </div>
+
+    <header class="attack-header">
+      <h1 class="attack-title">MS Teams Impersonation</h1>
+      <div class="attack-meta">
+        <span class="sev-badge sev-critical">Critical</span>
+        <span class="meta-pill">Initial Access</span>
+        <span class="meta-pill">Social Engineering</span>
+        <span class="meta-pill mitre">T1566</span>
+        <span class="meta-pill mitre">T1534</span>
+        <span class="meta-pill">Updated Jun 2025</span>
+      </div>
+      <p class="attack-summary">
+        Microsoft Teams has become a primary social engineering vector for sophisticated threat actors. Attackers exploit the inherent trust users place in Teams messages — impersonating IT helpdesks, executives, and Microsoft Support to steal credentials, manipulate MFA approvals, and deliver malware directly inside an organization's collaboration environment.
+      </p>
+    </header>
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section id="overview" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        What is MS Teams Impersonation?
+        <span class="section-num">01</span>
+      </h2>
+
+      <p>
+        Microsoft Teams is one of the most widely used enterprise communication platforms in the world, and it operates with a fundamentally different trust model than email. Users have been trained to be skeptical of email from external senders, but Teams messages — especially ones that appear to come from within the organization — are widely treated as implicitly trusted. Attackers exploit this gap.
+      </p>
+
+      <p>MS Teams impersonation encompasses several distinct but related attack vectors:</p>
+
+      <ul>
+        <li>
+          <strong>External tenant messaging abuse:</strong> By default, Microsoft 365 tenants allow Teams messages from users in other Microsoft tenants. Attackers create Microsoft 365 trial accounts or use compromised tenants to send messages to victims that appear in their Teams client with an "(External)" label — which many users ignore or don't notice. The sender can set their display name to "Microsoft Support," "IT Help Desk," or the name of an internal employee.
+        </li>
+        <li>
+          <strong>Compromised internal account messaging:</strong> After compromising an internal user's account (via phishing, token theft, or credential stuffing), attackers use that account to send Teams messages to colleagues. These messages appear to come from a trusted internal source with no external label.
+        </li>
+        <li>
+          <strong>Malware delivery via Teams attachments:</strong> Teams allows file sharing within and across tenants. Attackers deliver malicious files (.exe, .vbs, weaponized Office documents, LNK files) directly to victims via Teams chat. Unlike email, Teams messages do not pass through most email security gateways.
+        </li>
+        <li>
+          <strong>Vishing / MFA manipulation via Teams calls:</strong> Attackers call victims via Teams (voice or video) impersonating IT helpdesk staff. While on the call, they walk the victim through steps that either install remote access tools or pressure them to approve MFA push notifications the attacker has triggered.
+        </li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <span class="callout-title">The "(External)" Label is Not Enough</span>
+        <p>Microsoft Teams does show an "(External)" designation for messages from outside the tenant. However, research and incident data consistently show that users treat this label as background information rather than a security warning &mdash; especially when the message content creates urgency (e.g., "Your account is about to be suspended"). This is a social engineering problem as much as a technical one.</p>
+      </div>
+    </section>
+
+    <!-- ── 02 WHY USED ── -->
+    <section id="why-used" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        Why Do Threat Actors Use It?
+        <span class="section-num">02</span>
+      </h2>
+
+      <ul>
+        <li>
+          <strong>It bypasses email security controls entirely.</strong> Your organization may have Defender for Office 365, anti-phishing policies, DMARC, DKIM, and SPF all correctly configured — and none of those controls apply to Teams messages. A link delivered via Teams chat skips every email gateway inspection layer.
+        </li>
+        <li>
+          <strong>Users inherently trust Teams more than email.</strong> Years of phishing awareness training have conditioned people to be suspicious of email from external senders. Teams carries no such cultural suspicion. A Teams message from "IT Support" feels like an internal notification.
+        </li>
+        <li>
+          <strong>External messaging is enabled by default.</strong> Microsoft's default configuration allows any M365 user from any tenant to initiate a Teams chat with your users. Organizations that haven't explicitly restricted this are open to cold contact from external attackers.
+        </li>
+        <li>
+          <strong>Teams enables real-time social engineering.</strong> Unlike email phishing (asynchronous), Teams allows voice and video calls. An attacker can phone a victim, maintain live voice contact, create urgency and confusion, and walk them through malicious actions in real time.
+        </li>
+        <li>
+          <strong>Low barriers to impersonation.</strong> Anyone can create a Microsoft 365 trial account and set their display name to "Microsoft Support," "IT Help Desk," or the name of any internal employee found on LinkedIn. There is no domain or identity verification displayed to the recipient.
+        </li>
+        <li>
+          <strong>File delivery without detection.</strong> Many organizations have DLP and malware scanning on email but not on Teams. Attackers can deliver malicious files to an employee's Teams chat knowing the file may not be inspected.
+        </li>
+      </ul>
+    </section>
+
+    <!-- ── 03 IMPACT ── -->
+    <section id="impact" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        What Happens If Attackers Succeed?
+        <span class="section-num">03</span>
+      </h2>
+
+      <h3>Credential Theft &amp; Account Takeover</h3>
+      <p>
+        The most common outcome is credential theft. Attackers send victims a Teams message with a link to what appears to be a shared document, a security notification, or an IT portal. The link redirects to an AiTM phishing page or a credential harvesting site that mimics Microsoft's login portal. The victim enters their credentials and potentially approves an MFA request, giving the attacker full account access.
+      </p>
+
+      <h3>MFA Fatigue and Push Bombing</h3>
+      <p>
+        Attackers who already have a victim's credentials (from a separate data breach or credential dump) will initiate a Teams call impersonating IT helpdesk. While on the call, they trigger repeated MFA push notifications and pressure the victim to approve one — telling them "the system sent you an approval request, please accept it to verify your identity." This technique has proven extremely effective even against employees with security awareness training, particularly when attackers create urgency about account suspension or security incidents.
+      </p>
+
+      <h3>Malware Delivery</h3>
+      <p>
+        Storm-0324, a ransomware affiliate, industrialized Teams malware delivery by creating external Microsoft 365 tenants at scale and mass-delivering malicious file attachments (.exe, .lnk, .js) via Teams direct messages. Victims who opened files received DarkGate or Qakbot infections, which subsequently led to ransomware deployment. The attack chain bypassed email security entirely.
+      </p>
+
+      <h3>Remote Access Establishment</h3>
+      <p>
+        During vishing calls, attackers instruct victims to install remote access tools (QuickAssist, TeamViewer, AnyDesk, ScreenConnect) under the guise of IT troubleshooting. Once connected, the attacker has direct access to the victim's device, files, browser sessions, and can operate freely while the victim stays on the call.
+      </p>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">Microsoft QuickAssist Abuse</span>
+        <p>Microsoft's built-in QuickAssist tool has been specifically abused by Black Basta affiliates in Teams-based attacks. Attackers impersonate internal IT staff via Teams, request screen share via QuickAssist, then install persistent backdoors. QuickAssist does not require administrative credentials to install or accept remote sessions.</p>
+      </div>
+    </section>
+
+    <!-- ── 04 DETECTION ── -->
+    <section id="detection" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        Detection &amp; Threat Hunting
+        <span class="section-num">04</span>
+      </h2>
+
+      <h3>Log Sources</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What to Look For</th>
+              <th>Table (Sentinel / Defender)</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-source">Defender for Cloud Apps</td>
+              <td>External Teams messages with links/attachments, external tenants messaging multiple users, guest/external file uploads</td>
+              <td><code class="inline">CloudAppEvents</code></td>
+              <td><span class="req-badge req-p2">MDCA License</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">M365 Unified Audit Log</td>
+              <td>Teams message send events, file sharing events, external user activity</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Sign-in Logs</td>
+              <td>Sign-ins from unfamiliar locations/IPs shortly after Teams external contact, high-risk sign-ins</td>
+              <td><code class="inline">SigninLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Defender for Endpoint</td>
+              <td>Remote access tool installations (QuickAssist, AnyDesk, TeamViewer), suspicious process execution following Teams activity</td>
+              <td><code class="inline">DeviceEvents</code></td>
+              <td><span class="req-badge req-p2">MDE License</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Defender for Office 365</td>
+              <td>Safe Links detonation of URLs sent via Teams, malicious file detection in Teams</td>
+              <td><code class="inline">EmailUrlInfo</code> / Alerts</td>
+              <td><span class="req-badge req-p2">MDO P2</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-title">Enable Teams Audit Logging</span>
+        <p>Microsoft 365 Teams audit events are captured in the Unified Audit Log, but you must ensure audit logging is enabled for your tenant (<strong>Compliance Center &rarr; Audit</strong>) and that you are ingesting <code class="inline">OfficeActivity</code> and <code class="inline">CloudAppEvents</code> into your SIEM. Without these, most Teams detection queries will return no data.</p>
+      </div>
+
+      <h3>Hunt Query 1 — External Tenant Messaging Multiple Internal Users</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Defender XDR / Sentinel &mdash; CloudAppEvents</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// External tenant sending Teams messages to multiple internal users
+// Possible mass phishing or social engineering campaign from external M365 tenant
+// Tune the UniqueTargets threshold to your environment
+CloudAppEvents
+| where TimeGenerated > ago(7d)
+| where Application == "Microsoft Teams"
+| where ActionType has "Message"
+| extend
+    SenderDomain = tostring(parse_json(tostring(RawEventData)).SenderDomain),
+    SenderUpn    = tostring(parse_json(tostring(RawEventData)).SenderUpn)
+| where isnotempty(SenderDomain)
+| where SenderDomain !endswith "yourdomain.com"   // Replace with your domain(s)
+| summarize
+    MessageCount  = count(),
+    UniqueTargets = dcount(AccountUpn),
+    Targets       = make_set(AccountUpn, 20),
+    FirstSeen     = min(TimeGenerated),
+    LastSeen      = max(TimeGenerated)
+    by SenderDomain, SenderUpn, bin(TimeGenerated, 1h)
+| where UniqueTargets >= 3
+| order by UniqueTargets desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 2 — External/Guest Users Sharing Files in Teams</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Defender XDR / Sentinel &mdash; CloudAppEvents</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// File uploads or shares from external/guest users via Teams
+// Malware delivery vector — especially high-risk for executable file types
+CloudAppEvents
+| where TimeGenerated > ago(14d)
+| where Application == "Microsoft Teams"
+| where ActionType has_any ("FileUploaded", "FileSyncUploadedFull", "FileShared", "MessageCreatedHasAttachment")
+| extend
+    UserType = tostring(parse_json(tostring(RawEventData)).UserType),
+    FileName = tostring(parse_json(tostring(RawEventData)).SourceFileName)
+| where UserType in~ ("Guest", "External")
+| extend FileExt = tostring(split(FileName, ".")[-1])
+| where FileExt in~ (
+    "exe","dll","vbs","js","bat","cmd","ps1","lnk","iso","zip","rar"  // High-risk extensions
+  )
+| project
+    TimeGenerated,
+    AccountDisplayName,
+    AccountUpn,
+    UserType,
+    ActionType,
+    FileName,
+    FileExt,
+    IPAddress
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 3 — External Teams Message Followed by High-Risk Sign-in</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Defender XDR / Sentinel &mdash; CloudAppEvents + SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Correlate external Teams messages with subsequent high-risk sign-ins
+// Suggests victim may have clicked a phishing link delivered via Teams
+let ExternalMessages = CloudAppEvents
+    | where TimeGenerated > ago(7d)
+    | where Application == "Microsoft Teams"
+    | where ActionType == "MessageCreatedHasLink"
+    | extend SenderTenant = tostring(parse_json(tostring(RawEventData)).SenderTenantId)
+    | where SenderTenant != "<your-tenant-id>"       // Replace with your tenant ID
+    | project MsgTime = TimeGenerated, TargetUpn = AccountUpn;
+SigninLogs
+| where TimeGenerated > ago(7d)
+| where ResultType == 0
+| where RiskEventTypes_V2 has_any (
+    "unfamiliarFeatures",
+    "anomalousToken",
+    "anonymizedIPAddress",
+    "impossibleTravel"
+  )
+| join kind=inner ExternalMessages
+    on $left.UserPrincipalName == $right.TargetUpn
+| where TimeGenerated between (MsgTime .. (MsgTime + 2h))
+| project
+    MsgTime,
+    SigninTime  = TimeGenerated,
+    UserPrincipalName,
+    IPAddress,
+    Location,
+    RiskEventTypes_V2,
+    AppDisplayName</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 4 — Remote Access Tool Installation via Teams Context</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Defender XDR &mdash; DeviceProcessEvents</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Remote access tools launched or installed on devices with recent Teams activity
+// Indicative of vishing attack where IT impersonator requests remote session
+// Requires Microsoft Defender for Endpoint
+DeviceProcessEvents
+| where TimeGenerated > ago(14d)
+| where FileName in~ (
+    "quickassist.exe",
+    "anydesk.exe",
+    "teamviewer.exe",
+    "screenconnect.exe",
+    "msra.exe",              // Remote Assistance
+    "rustdesk.exe"
+  )
+| where InitiatingProcessFileName !in~ (
+    "msiexec.exe",           // Exclude legitimate managed installs
+    "setup.exe"
+  )
+| project
+    TimeGenerated,
+    DeviceName,
+    AccountName,
+    FileName,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessCommandLine
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 05 THREAT ACTORS ── -->
+    <section id="threat-actors" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        Known Threat Actors
+        <span class="section-num">05</span>
+      </h2>
+
+      <p>MS Teams impersonation has been documented across multiple distinct threat actor clusters, ranging from nation-state groups to financially motivated cybercriminal organizations.</p>
+
+      <div class="actor-grid">
+
+        <div class="actor-card">
+          <div class="actor-name">Midnight Blizzard</div>
+          <div class="actor-aka">APT29 &middot; Cozy Bear &middot; NOBELIUM</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-nation">Nation-State (Russia)</span>
+          </div>
+          <div class="actor-notes">
+            In August 2023, Microsoft publicly disclosed that Midnight Blizzard conducted targeted Teams-based social engineering against fewer than 40 global organizations — primarily government agencies, NGOs, and tech companies. They created Microsoft 365 trial tenants and sent messages impersonating Microsoft technical support staff, attempting to steal MFA credentials via phishing links.
+          </div>
+        </div>
+
+        <div class="actor-card">
+          <div class="actor-name">Scattered Spider</div>
+          <div class="actor-aka">UNC3944 &middot; Muddled Libra</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-criminal">Cybercriminal</span>
+          </div>
+          <div class="actor-notes">
+            Known for sophisticated helpdesk impersonation via Teams voice calls. They research targets thoroughly using LinkedIn and company websites, then call IT helpdesks or message employees pretending to be IT support personnel. They request MFA reset assistance or pressure victims into approving MFA push notifications while simultaneously attempting account takeovers.
+          </div>
+        </div>
+
+        <div class="actor-card">
+          <div class="actor-name">Storm-0324</div>
+          <div class="actor-aka">TA543 &middot; Cyclops</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-criminal">Cybercriminal</span>
+          </div>
+          <div class="actor-notes">
+            Industrialized Teams-based malware delivery. Storm-0324 created large numbers of external Microsoft 365 tenants and sent Teams messages at scale containing malicious file attachments. Used to distribute DarkGate and Qakbot malware as an initial access broker, with payloads frequently leading to ransomware. Microsoft disrupted their infrastructure in 2023 but the technique remains active.
+          </div>
+        </div>
+
+        <div class="actor-card">
+          <div class="actor-name">Black Basta (Affiliates)</div>
+          <div class="actor-aka">SCATTERED SPIDER Adjacent</div>
+          <div class="actor-tags">
+            <span class="actor-tag actor-criminal">Cybercriminal</span>
+          </div>
+          <div class="actor-notes">
+            Black Basta ransomware affiliates were documented in 2024 using Teams vishing calls to impersonate IT helpdesk staff. They initiate contact via Teams, report fake security incidents requiring immediate resolution, and instruct victims to install QuickAssist or accept a remote session — deploying QAKBOT, Cobalt Strike, and ultimately Black Basta ransomware.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── 06 FOLLOW-ON ── -->
+    <section id="follow-on" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+        </span>
+        Typical Follow-on Activity
+        <span class="section-num">06</span>
+      </h2>
+
+      <p>The follow-on chain differs by attack vector. Below are the two most common progressions.</p>
+
+      <h3>Chain A: Phishing Link via Teams &rarr; Account Takeover</h3>
+      <ol>
+        <li><strong>External Teams message</strong> with urgent pretext ("Your account access will be suspended," "Verify your identity now")</li>
+        <li><strong>Victim clicks link</strong> &rarr; redirected to AiTM phishing page mimicking Microsoft login</li>
+        <li><strong>Credentials and MFA token stolen</strong> &rarr; attacker authenticates to M365 using stolen session cookie</li>
+        <li><strong>Post-compromise actions</strong> &rarr; inbox rules, data exfiltration, BEC (see Session Token Theft profile for details)</li>
+      </ol>
+
+      <h3>Chain B: Vishing / QuickAssist &rarr; Ransomware</h3>
+      <ol>
+        <li><strong>Pre-attack spam bombing</strong> (optional) &rarr; flood victim's inbox with thousands of emails to create confusion and a pretext for IT contact</li>
+        <li><strong>Teams call or message</strong> impersonating IT helpdesk: "We've detected an issue with your account. I'm calling to help you resolve it."</li>
+        <li><strong>Victim instructed to install QuickAssist</strong> or accept remote access session</li>
+        <li><strong>Attacker runs discovery commands</strong> via remote session: enumerates local admin rights, active directory membership, connected network drives</li>
+        <li><strong>Persistence established</strong> &rarr; scheduled tasks, registry run keys, or a second legitimate remote access tool installed silently</li>
+        <li><strong>Lateral movement</strong> &rarr; credential dumping (Mimikatz, LSASS), use of stolen credentials to pivot to domain controllers or additional workstations</li>
+        <li><strong>Ransomware deployment</strong> &rarr; data exfiltration followed by encryption across the network</li>
+      </ol>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">Speed of Escalation</span>
+        <p>In documented Black Basta attacks, the time from initial Teams contact to ransomware deployment was measured in hours, not days. The combination of real-time social engineering via Teams voice calls and legitimate remote access tools makes this attack chain particularly fast and difficult to interrupt once it begins.</p>
+      </div>
+    </section>
+
+    <!-- ── 07 PREVENTION ── -->
+    <section id="prevention" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/><polyline points="9 12 11 14 15 10"/></svg>
+        </span>
+        Prevention &amp; Hardening
+        <span class="section-num">07</span>
+      </h2>
+
+      <ul class="prevention-list">
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Restrict External Teams Access to Specific Trusted Tenants Only</div>
+            <div class="prev-desc">In the Microsoft Teams Admin Center under <strong>External Access</strong>, change the setting from "Allow all external domains" to "Allow only specific external domains" — then whitelist only the external organizations your company regularly collaborates with. This eliminates the ability of attackers to create arbitrary Microsoft 365 tenants and contact your users cold. This is the single highest-impact control for this attack.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Enable Safe Links for Microsoft Teams</div>
+            <div class="prev-desc">Microsoft Defender for Office 365 Plan 1 Safe Links can scan URLs sent in Teams messages and block access to known malicious sites. Configure under <strong>Microsoft Defender Portal &rarr; Email &amp; Collaboration &rarr; Policies &amp; Rules &rarr; Safe Links</strong>. Enable "Teams" in the policy scope. This provides URL inspection for one of the most common delivery mechanisms — malicious links sent in Teams chat.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">User Awareness: IT Will Never Ask You to Approve MFA in Teams</div>
+            <div class="prev-desc">Run specific training that tells employees: (1) IT helpdesk will never initiate contact via Teams to ask you to approve an MFA notification you didn't trigger; (2) any Teams message requesting urgent credential or identity verification is a red flag; (3) employees should call the IT helpdesk back on a known number before acting on any Teams request involving account access. This social engineering attack relies on users not knowing these norms.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p1">P1</span>
+          <div class="prev-body">
+            <div class="prev-title">Restrict or Remove Microsoft QuickAssist from Managed Devices</div>
+            <div class="prev-desc">QuickAssist is a built-in Windows tool that has been specifically abused in Teams-based helpdesk impersonation attacks (Black Basta, Scattered Spider). If your IT team does not use QuickAssist as a legitimate remote support tool, remove it via Microsoft Intune or Group Policy. If you need remote support capability, use your managed remote access tool (not QuickAssist) and train employees to accept sessions only from that tool.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Block File Downloads from External/Guest Users in Teams</div>
+            <div class="prev-desc">In the Teams Admin Center under <strong>Guest Access</strong> and <strong>External Access</strong> policies, restrict the ability of external and guest users to share files in Teams chats. Also configure SharePoint external sharing settings to align. This limits the malware delivery vector used by Storm-0324 and similar actors.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Deploy Defender for Cloud Apps Policies for Teams Anomalies</div>
+            <div class="prev-desc">Configure Microsoft Defender for Cloud Apps (MDCA) activity policies to alert when: an external user sends messages to more than N internal users within a time window; a guest or external user shares files with high-risk extensions; or when a new external tenant initiates contact with users in sensitive departments (Finance, HR, Executive). MDCA provides the richest Teams activity telemetry available.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p2">P2</span>
+          <div class="prev-body">
+            <div class="prev-title">Enable Number Matching &amp; Additional Context for MFA Push</div>
+            <div class="prev-desc">Entra ID's Authenticator App now supports number matching (victim must type a code shown on screen into their Authenticator app) and additional context (shows the app and location requesting approval). Both controls dramatically reduce MFA fatigue/push bombing success rates. Enable both under <strong>Entra ID &rarr; Security &rarr; Authentication Methods &rarr; Microsoft Authenticator</strong>. Number matching is on by default for new tenants — verify it is enabled for yours.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p3">P3</span>
+          <div class="prev-body">
+            <div class="prev-title">Configure Microsoft Purview Communication Compliance for Teams</div>
+            <div class="prev-desc">Microsoft Purview Communication Compliance can monitor Teams messages for policy violations, including messages containing keywords associated with social engineering (e.g., "wire transfer," "urgent payment," "approve this request"). Useful for detecting ongoing campaigns targeting finance and HR teams via Teams.</div>
+          </div>
+        </li>
+
+        <li class="prevention-item">
+          <span class="prev-priority p3">P3</span>
+          <div class="prev-body">
+            <div class="prev-title">Review and Restrict App Permissions in Teams</div>
+            <div class="prev-desc">Attackers can also abuse the Teams app store to install malicious applications into your tenant if app governance is loose. In the Teams Admin Center, restrict which apps users can install (allow only Microsoft-verified apps or a specific approved list). Enable Microsoft Defender for Cloud Apps App Governance add-on for OAuth app visibility.</div>
+          </div>
+        </li>
+
+      </ul>
+    </section>
+
+    <!-- ── 08 RESOURCES ── -->
+    <section id="resources" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </span>
+        External Resources
+        <span class="section-num">08</span>
+      </h2>
+
+      <ul class="resource-list">
+
+        <a class="resource-item" href="https://www.microsoft.com/en-us/security/blog/2023/08/02/midnight-blizzard-conducts-targeted-social-engineering-over-microsoft-teams/" target="_blank" rel="noopener">
+          <div class="resource-source-icon">MSFT</div>
+          <div class="resource-body">
+            <div class="resource-title">Midnight Blizzard conducts targeted social engineering over Microsoft Teams</div>
+            <div class="resource-meta">Microsoft Security Blog &middot; Aug 2023 <span class="resource-type">Blog</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://www.microsoft.com/en-us/security/blog/2023/09/12/malware-distributor-storm-0324-facilitates-ransomware-access/" target="_blank" rel="noopener">
+          <div class="resource-source-icon">MSFT</div>
+          <div class="resource-body">
+            <div class="resource-title">Malware distributor Storm-0324 facilitates ransomware access</div>
+            <div class="resource-meta">Microsoft Security Blog &middot; Sep 2023 <span class="resource-type">Blog</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://www.microsoft.com/en-us/security/blog/2024/05/15/threat-actors-misusing-quick-assist-in-social-engineering-attacks-leading-to-ransomware/" target="_blank" rel="noopener">
+          <div class="resource-source-icon">MSFT</div>
+          <div class="resource-body">
+            <div class="resource-title">Threat actors misusing Quick Assist in social engineering attacks leading to ransomware</div>
+            <div class="resource-meta">Microsoft Security Blog &middot; May 2024 <span class="resource-type">Blog</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://learn.microsoft.com/en-us/microsoftteams/manage-external-access" target="_blank" rel="noopener">
+          <div class="resource-source-icon">Docs</div>
+          <div class="resource-body">
+            <div class="resource-title">Manage external access in Microsoft Teams</div>
+            <div class="resource-meta">Microsoft Learn &middot; Teams Administration Documentation <span class="resource-type">Docs</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://www.cisa.gov/sites/default/files/2023-10/StopRansomware_Scattered_Spider_AA23-291A.pdf" target="_blank" rel="noopener">
+          <div class="resource-source-icon">CISA</div>
+          <div class="resource-body">
+            <div class="resource-title">#StopRansomware: Scattered Spider (AA23-291A) &mdash; Social Engineering &amp; Vishing TTPs</div>
+            <div class="resource-meta">CISA &middot; FBI &middot; Oct 2023 <span class="resource-type">Advisory</span></div>
+          </div>
+        </a>
+
+        <a class="resource-item" href="https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/safe-links-about?view=o365-worldwide" target="_blank" rel="noopener">
+          <div class="resource-source-icon">Docs</div>
+          <div class="resource-body">
+            <div class="resource-title">Safe Links in Microsoft Defender for Office 365 (including Teams)</div>
+            <div class="resource-meta">Microsoft Learn &middot; Defender for Office 365 Documentation <span class="resource-type">Docs</span></div>
+          </div>
+        </a>
+
+      </ul>
+    </section>
+
+  </main><!-- /attack-content -->
+</div><!-- /attack-page -->
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="../index.html">All Attacks</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/main.js"></script>
+</body>
+</html>
