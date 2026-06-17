@@ -398,10 +398,32 @@
       transition: all 0.15s;
       font-family: inherit;
       padding: 0;
+      position: relative;
     }
     .impl-btn svg { pointer-events: none; }
     .impl-btn:hover { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
     .impl-btn.done { border-color: #16a34a; color: white; background: #16a34a; }
+
+    /* Tooltip */
+    .impl-btn::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 34px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #1e293b;
+      color: white;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s 0.25s;
+      z-index: 20;
+    }
+    .impl-btn:hover::after { opacity: 1; }
 
     /* ── Impl banner ─────────────────────────────────────── */
     .impl-banner {
@@ -689,6 +711,9 @@ function render() {
       row.className = "control-row" + (isImpl ? " done" : "");
       row.innerHTML = `
         <input type="checkbox" class="control-check" id="chk-${c.id}" ${isChecked ? "checked" : ""} ${isImpl ? "disabled" : ""} onchange="toggleControl('${c.id}', this.checked)">
+        <button class="impl-btn ${isImpl ? "done" : ""}" onclick="markImplemented('${c.id}')" data-tooltip="${isImpl ? "Unmark — not yet implemented" : "Mark as implemented · hide from view"}">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5 6 4.5 9 10.5 3"/></svg>
+        </button>
         <div class="priority-col">
           <span class="prev-priority ${c.priority.toLowerCase()}">${c.priority}</span>
         </div>
@@ -712,9 +737,6 @@ function render() {
           <div class="score-denom">/${MAX_SCORE}</div>
         </div>
         <a href="control.html?id=${c.id}" class="profile-link">Profile &rarr;</a>
-        <button class="impl-btn ${isImpl ? "done" : ""}" onclick="markImplemented('${c.id}')" title="${isImpl ? "Unmark — not yet implemented" : "Mark as implemented"}">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5 6 4.5 9 10.5 3"/></svg>
-        </button>
       `;
       body.appendChild(row);
     });
