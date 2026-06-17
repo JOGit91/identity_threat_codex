@@ -27,15 +27,57 @@
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--accent);
-      margin-bottom: 10px;
+      margin-bottom: 14px;
     }
 
-    .plan-header h1 {
+    /* Editable plan name */
+    .plan-name-wrap { margin-bottom: 10px; }
+
+    .plan-name-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-subtle);
+      margin-bottom: 5px;
+    }
+
+    .plan-name-input {
+      display: block;
+      width: 100%;
       font-size: clamp(20px, 4vw, 28px);
       font-weight: 800;
       letter-spacing: -0.03em;
       color: var(--text);
-      margin-bottom: 10px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px dashed var(--border);
+      border-radius: 0;
+      font-family: inherit;
+      outline: none;
+      padding: 0 0 6px;
+      line-height: 1.2;
+      transition: border-color 0.15s;
+    }
+    .plan-name-input:focus {
+      border-bottom-color: var(--accent);
+      border-bottom-style: solid;
+    }
+    .plan-name-input::placeholder { color: var(--text-subtle); font-weight: 500; }
+
+    .plan-name-hint {
+      font-size: 11px;
+      color: var(--text-subtle);
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    @media print {
+      .plan-name-input { border-bottom: none; }
+      .plan-name-hint  { display: none; }
     }
 
     .plan-meta {
@@ -369,10 +411,19 @@ function formatDate() {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
-// ── Parse selected control IDs from URL ──────────────────
+// ── Parse URL params ─────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
-const rawIds = params.get("controls") || "";
+const rawIds  = params.get("controls") || "";
+const planName = params.get("name") || "";
 const selectedIds = rawIds.split(",").map(s => s.trim()).filter(Boolean);
+
+function escHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+if (planName) {
+  document.title = planName + " — M365 Identity Threat Codex";
+}
 const selectedControls = selectedIds
   .map(id => CONTROLS.find(c => c.id === id))
   .filter(Boolean);
@@ -452,7 +503,16 @@ if (!selectedControls.length) {
   mount.innerHTML = `
     <div class="plan-header">
       <div class="plan-eyebrow">Implementation Plan · M365 Identity Threat Codex</div>
-      <h1>M365 Hardening Implementation Plan</h1>
+      <div class="plan-name-wrap">
+        <label class="plan-name-label" for="plan-name">Client / Organization</label>
+        <input type="text" id="plan-name" class="plan-name-input"
+          value="${escHtml(planName)}"
+          placeholder="Enter client or organization name…">
+        <div class="plan-name-hint no-print">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Click to rename — name is saved in the URL for bookmarking &amp; sharing
+        </div>
+      </div>
       <div class="plan-meta">
         <div class="plan-meta-item">Generated: <strong>${formatDate()}</strong></div>
         <div class="plan-meta-item">&middot;</div>
@@ -485,6 +545,16 @@ if (!selectedControls.length) {
     ${renderPhase(medium, "phase-medium", "Plan This Month", "Moderate Effort — Days to Weeks", "Requires policy creation, licensing verification, and testing. Achievable without long-term organizational buy-in.")}
     ${renderPhase(hard, "phase-hard", "Long-Term Initiative", "Significant Investment — Weeks to Months", "Requires hardware, device management, or major rollout. Track these as formal projects with executive sponsorship.")}
   `;
+
+  // Wire plan name input → URL param + document title
+  const nameInput = document.getElementById("plan-name");
+  nameInput.addEventListener("input", function() {
+    const p = new URLSearchParams(window.location.search);
+    const v = this.value.trim();
+    if (v) { p.set("name", v); } else { p.delete("name"); }
+    history.replaceState(null, "", "?" + p.toString());
+    document.title = (v || "Implementation Plan") + " — M365 Identity Threat Codex";
+  });
 }
 </script>
 </body>
