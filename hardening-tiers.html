@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hardening Matrix — Priority Tiers (Demo A)</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+  <style>
+    .demo-switcher {
+      background: #0f172a;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 60px;
+      z-index: 90;
+    }
+    .demo-switcher-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      white-space: nowrap;
+    }
+    .demo-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .demo-tab {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #94a3b8;
+      border: 1px solid #1e293b;
+      transition: all 0.15s;
+    }
+    .demo-tab:hover { color: #e2e8f0; border-color: #334155; }
+    .demo-tab.active { background: #c0392b; color: white; border-color: #c0392b; }
+
+    /* Page layout */
+    .page-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+    .page-header {
+      margin-bottom: 48px;
+    }
+    .page-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .page-header h1 {
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .page-header p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      max-width: 620px;
+    }
+
+    /* Tier sections */
+    .tier {
+      margin-bottom: 40px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .tier-header {
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .tier-1 .tier-header { background: #fef2f2; border-bottom: 1px solid var(--critical-border); }
+    .tier-2 .tier-header { background: #fff7ed; border-bottom: 1px solid var(--high-border); }
+    .tier-3 .tier-header { background: #fffbeb; border-bottom: 1px solid #fcd34d; }
+
+    .tier-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .tier-1 .tier-badge { background: var(--critical); color: white; }
+    .tier-2 .tier-badge { background: var(--high); color: white; }
+    .tier-3 .tier-badge { background: var(--medium); color: white; }
+
+    .tier-header-text h2 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2px;
+    }
+    .tier-1 .tier-header-text h2 { color: var(--critical); }
+    .tier-2 .tier-header-text h2 { color: var(--high); }
+    .tier-3 .tier-header-text h2 { color: var(--medium); }
+
+    .tier-header-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+
+    .tier-count {
+      margin-left: auto;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-subtle);
+    }
+
+    /* Control cards inside tier */
+    .tier-controls {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .control-row:last-child { border-bottom: none; }
+    .control-row:hover { background: var(--surface-alt); }
+
+    .control-info { flex: 1; min-width: 0; }
+    .control-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 3px;
+      line-height: 1.35;
+    }
+    .control-category {
+      font-size: 11px;
+      color: var(--text-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    /* Coverage pills in a row */
+    .coverage-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .atk-coverage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .atk-name {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-subtle);
+      white-space: nowrap;
+    }
+
+    .cov-pill {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .cov-3 { background: var(--critical-bg); color: var(--critical); border-color: var(--critical-border); }
+    .cov-2 { background: var(--high-bg); color: var(--high); border-color: var(--high-border); }
+    .cov-1 { background: #fffbeb; color: var(--medium); border-color: #fcd34d; }
+    .cov-0 { background: var(--surface-alt); color: var(--text-subtle); border-color: var(--border); }
+
+    /* Score on right */
+    .score-col {
+      text-align: center;
+      min-width: 56px;
+      flex-shrink: 0;
+    }
+    .score-num {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .tier-1 .score-num { color: var(--critical); }
+    .tier-2 .score-num { color: var(--high); }
+    .tier-3 .score-num { color: var(--medium); }
+    .score-denom {
+      font-size: 11px;
+      color: var(--text-subtle);
+      font-weight: 400;
+    }
+
+    /* Priority dot on the left */
+    .priority-col {
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 640px) {
+      .coverage-row { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="index.html">Attacks</a>
+      <a href="hardening.html" class="active">Hardening Matrix</a>
+      <a href="index.html#about">About</a>
+    </div>
+  </div>
+</nav>
+
+<div class="demo-switcher">
+  <span class="demo-switcher-label">Layout Preview</span>
+  <div class="demo-tabs">
+    <a href="hardening-tiers.html" class="demo-tab active">A — Priority Tiers</a>
+    <a href="hardening-cards.html" class="demo-tab">B — Ranked Cards</a>
+    <a href="hardening-scoreboard.html" class="demo-tab">C — Scoreboard</a>
+  </div>
+</div>
+
+<div class="page-inner">
+  <div class="page-header">
+    <div class="page-eyebrow">Hardening Matrix — Layout Demo A</div>
+    <h1>Where should you start?</h1>
+    <p>Controls are grouped into three tiers by cross-attack coverage score. Start at the top — these controls protect you across the most attacks documented in this codex.</p>
+  </div>
+
+  <div id="tiers-container">
+    <!-- rendered by JS -->
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a></div>
+    </div>
+    <div class="footer-links">
+      <a href="index.html">All Attacks</a>
+      <a href="hardening.html">Hardening Matrix</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/hardening-data.js"></script>
+<script>
+function coverageLabel(s) {
+  return ["—","Partial","High","Critical"][s] || "—";
+}
+function coverageClass(s) {
+  return ["cov-0","cov-1","cov-2","cov-3"][s] || "cov-0";
+}
+
+// Tier thresholds based on % of MAX_SCORE
+const tiers = [
+  {
+    key: "start",
+    cssClass: "tier-1",
+    badge: "Start Here",
+    title: "Highest Impact — Do These First",
+    desc: "These controls protect you across the most attacks in this codex. If you prioritize nothing else, prioritize these.",
+    min: 0.67,  // score >= 67% of max
+  },
+  {
+    key: "next",
+    cssClass: "tier-2",
+    badge: "Do Next",
+    title: "Strong Additional Coverage",
+    desc: "Solid protection with some cross-attack benefit. Implement after the Tier 1 controls are in place.",
+    min: 0.34,
+  },
+  {
+    key: "targeted",
+    cssClass: "tier-3",
+    badge: "Targeted",
+    title: "Attack-Specific Hardening",
+    desc: "Protects strongly against specific attacks. Essential for your environment but narrower in scope.",
+    min: 0,
+  },
+];
+
+const container = document.getElementById("tiers-container");
+
+tiers.forEach(tier => {
+  const controls = SORTED_CONTROLS.filter(c => {
+    const pct = totalScore(c) / MAX_SCORE;
+    if (tier.min >= 0.67) return pct >= 0.67;
+    if (tier.min >= 0.34) return pct >= 0.34 && pct < 0.67;
+    return pct < 0.34;
+  });
+
+  if (!controls.length) return;
+
+  const section = document.createElement("div");
+  section.className = `tier ${tier.cssClass}`;
+
+  section.innerHTML = `
+    <div class="tier-header">
+      <span class="tier-badge">${tier.badge}</span>
+      <div class="tier-header-text">
+        <h2>${tier.title}</h2>
+        <p>${tier.desc}</p>
+      </div>
+      <span class="tier-count">${controls.length} control${controls.length !== 1 ? "s" : ""}</span>
+    </div>
+    <div class="tier-controls" id="tier-${tier.key}"></div>
+  `;
+  container.appendChild(section);
+
+  const body = document.getElementById(`tier-${tier.key}`);
+  controls.forEach(c => {
+    const score = totalScore(c);
+    const row = document.createElement("div");
+    row.className = "control-row";
+    row.innerHTML = `
+      <div class="priority-col">
+        <span class="prev-priority ${c.priority.toLowerCase()}">${c.priority}</span>
+      </div>
+      <div class="control-info">
+        <div class="control-name">${c.name}</div>
+        <div class="control-category">${c.category}</div>
+      </div>
+      <div class="coverage-row">
+        ${ATTACKS.map(a => `
+          <div class="atk-coverage">
+            <span class="atk-name">${a.short}</span>
+            <span class="cov-pill ${coverageClass(c.coverage[a.id] || 0)}">${coverageLabel(c.coverage[a.id] || 0)}</span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="score-col">
+        <div class="score-num">${score}</div>
+        <div class="score-denom">/${MAX_SCORE}</div>
+      </div>
+    `;
+    body.appendChild(row);
+  });
+});
+</script>
+</body>
+</html>
