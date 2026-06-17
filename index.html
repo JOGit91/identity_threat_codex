@@ -53,15 +53,15 @@
   </div>
   <div class="hero-stats">
     <div class="hero-stat">
-      <span class="stat-number">2</span>
+      <span class="stat-number">4</span>
       <span class="stat-label">Attacks Documented</span>
     </div>
     <div class="hero-stat">
-      <span class="stat-number">8+</span>
+      <span class="stat-number">14+</span>
       <span class="stat-label">KQL Hunt Queries</span>
     </div>
     <div class="hero-stat">
-      <span class="stat-number">6</span>
+      <span class="stat-number">8+</span>
       <span class="stat-label">Threat Actors Profiled</span>
     </div>
     <div class="hero-stat">
@@ -143,13 +143,71 @@
       </div>
     </a>
 
+    <!-- ── Device Code Phishing ── -->
+    <a
+      class="attack-card"
+      href="attacks/device-code-phishing.html"
+      data-searchable="device code phishing oauth mfa bypass token theft microsoft login midnight blizzard star blizzard apt29 storm-2372 rfc 8628 devicelogin initial access credential access persistent access"
+      data-categories="credential-access initial-access"
+    >
+      <div class="card-header">
+        <div class="card-name">Device Code Phishing</div>
+        <span class="sev-badge sev-critical">Critical</span>
+      </div>
+      <div class="card-category">Credential Access &middot; Initial Access</div>
+      <p class="card-desc">
+        Attackers abuse the OAuth 2.0 device authorization flow to trick users into handing over a valid Microsoft 365 token — no fake login page, no suspicious URL. The victim completes MFA on Microsoft's real servers and the attacker receives a persistent refresh token.
+      </p>
+      <div class="card-tags">
+        <span class="tag">Device Code</span>
+        <span class="tag">OAuth</span>
+        <span class="tag">MFA Bypass</span>
+        <span class="tag">Token Theft</span>
+        <span class="tag">APT29</span>
+        <span class="tag">No Phishing Domain</span>
+      </div>
+      <div class="card-footer">
+        <span>MITRE T1528 &middot; T1566</span>
+        <span class="card-link">View profile &rarr;</span>
+      </div>
+    </a>
+
+    <!-- ── OAuth Consent Abuse ── -->
+    <a
+      class="attack-card"
+      href="attacks/oauth-consent-abuse.html"
+      data-searchable="oauth consent abuse illicit consent grant oauth phishing malicious app persistent access mail.readwrite files.readwrite midnight blizzard scattered spider bec persistence credential access"
+      data-categories="credential-access"
+    >
+      <div class="card-header">
+        <div class="card-name">OAuth Consent Abuse</div>
+        <span class="sev-badge sev-critical">Critical</span>
+      </div>
+      <div class="card-category">Persistence &middot; Credential Access</div>
+      <p class="card-desc">
+        Attackers register malicious OAuth applications and trick users into consenting to broad M365 permissions. The app gains persistent, silent access to mailboxes and files that survives password resets, MFA changes, and session revocations.
+      </p>
+      <div class="card-tags">
+        <span class="tag">OAuth</span>
+        <span class="tag">Consent Phishing</span>
+        <span class="tag">Persistence</span>
+        <span class="tag">Mail Access</span>
+        <span class="tag">BEC</span>
+        <span class="tag">Graph API</span>
+      </div>
+      <div class="card-footer">
+        <span>MITRE T1550.001 &middot; T1528</span>
+        <span class="card-link">View profile &rarr;</span>
+      </div>
+    </a>
+
   </div><!-- /attacks-grid -->
 
   <!-- Coming soon placeholder -->
   <div style="margin-top: 32px; padding: 32px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: var(--radius); text-align: center;">
     <div style="font-size: 13px; font-weight: 600; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Coming Soon</div>
     <div style="font-size: 14px; color: var(--text-muted);">
-      Device Code Phishing &nbsp;&middot;&nbsp; OAuth Consent Abuse &nbsp;&middot;&nbsp; MFA Fatigue / Push Bombing &nbsp;&middot;&nbsp; Adversary-in-the-Middle Phishing &nbsp;&middot;&nbsp; Mailbox Rule Manipulation
+      MFA Fatigue / Push Bombing &nbsp;&middot;&nbsp; Adversary-in-the-Middle Phishing &nbsp;&middot;&nbsp; Mailbox Rule Manipulation &nbsp;&middot;&nbsp; Password Spray
     </div>
   </div>
 

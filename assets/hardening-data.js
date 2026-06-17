@@ -19,6 +19,18 @@ const ATTACKS = [
     short: "Teams Impersonation",
     url: "attacks/ms-teams-impersonation.html",
   },
+  {
+    id: "device-code-phishing",
+    name: "Device Code Phishing",
+    short: "Device Code",
+    url: "attacks/device-code-phishing.html",
+  },
+  {
+    id: "oauth-consent-abuse",
+    name: "OAuth Consent Abuse",
+    short: "OAuth Consent",
+    url: "attacks/oauth-consent-abuse.html",
+  },
 ];
 
 const CONTROLS = [
@@ -39,10 +51,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    3,
       "ms-teams-impersonation": 2,
+      "device-code-phishing":   0,
+      "oauth-consent-abuse":    0,
     },
     why: {
       "session-token-theft":    "FIDO2 credentials are origin-bound — an AiTM proxy cannot capture or relay them. The only MFA type that prevents token theft at the authentication layer.",
       "ms-teams-impersonation": "If a victim clicks a phishing link from Teams, FIDO2 prevents compromise because the phishing domain won't match the registered origin.",
+      "device-code-phishing":   "Device code phishing redirects the victim to the legitimate Microsoft login page — FIDO2 credentials authenticate correctly and the token is legitimately issued to the attacker's app. FIDO2 does not prevent this attack.",
+      "oauth-consent-abuse":    "OAuth consent abuse exploits the app consent flow, not the authentication event. FIDO2 does not affect whether a user can be tricked into consenting to a malicious OAuth application.",
     },
     overview: [
       "Phishing-Resistant MFA replaces traditional password + one-time code (OTP) authentication with cryptographic proof that is permanently bound to a specific website origin. When a user registers a FIDO2 security key or Windows Hello for Business credential, the private key is stored on the device and mathematically linked to the exact domain they registered it against. An AiTM (Adversary-in-the-Middle) phishing proxy is fundamentally incapable of relaying these credentials because the domain the victim is actually connecting to won't match.",
@@ -94,10 +110,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    1,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   0,
+      "oauth-consent-abuse":    0,
     },
     why: {
       "session-token-theft":    "Reduces push bombing effectiveness in AiTM-adjacent campaigns. Doesn't stop token theft once a session exists, but limits MFA fatigue abuse.",
       "ms-teams-impersonation": "Directly stops MFA push bombing — victims must enter a matching code rather than blindly approving. Additional context (app name + location) makes attacker-triggered pushes obvious.",
+      "device-code-phishing":   "Device code phishing does not involve an MFA push notification — the victim authenticates interactively at the Microsoft login page. Number matching has no effect on this attack flow.",
+      "oauth-consent-abuse":    "OAuth consent abuse does not involve MFA push notifications. This control has no effect on the consent grant flow.",
     },
     overview: [
       "Number Matching requires users approving a Microsoft Authenticator MFA push to type a two-digit number shown on the sign-in screen into the Authenticator app. This one change eliminates 'push bombing' — where attackers who have a victim's credentials trigger repeated MFA notifications hoping the victim approves one out of annoyance or confusion.",
@@ -140,10 +160,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 1,
+      "device-code-phishing":   1,
+      "oauth-consent-abuse":    0,
     },
     why: {
       "session-token-theft":    "Prevents an attacker who has stolen a session token from registering a new MFA method to maintain persistent access through a password reset.",
       "ms-teams-impersonation": "Limits persistence options after account takeover via Teams-based phishing — attacker cannot add their own authenticator.",
+      "device-code-phishing":   "After obtaining a token via device code flow, attackers often register additional MFA methods to lock in persistence before the victim notices. This control prevents that follow-on action.",
+      "oauth-consent-abuse":    "OAuth consent grants persist independently of MFA methods — restricting MFA registration does not affect the consent flow.",
     },
     overview: [
       "By default, any user can register a new MFA method from any device or location. This is a critical gap: an attacker who gains access to an account can register their own authenticator app or phone number, giving them persistent MFA-authenticated access even after the legitimate user resets their password.",
@@ -188,10 +212,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 0,
+      "device-code-phishing":   0,
+      "oauth-consent-abuse":    0,
     },
     why: {
       "session-token-theft":    "Legacy protocols (IMAP, POP3, SMTP AUTH, basic auth) bypass Conditional Access and MFA entirely — they cannot enforce MFA and tokens acquired through these protocols can be used independently of session cookie theft.",
       "ms-teams-impersonation": "Not directly relevant to Teams-based attack chains.",
+      "device-code-phishing":   "Device code phishing uses modern OAuth 2.0 flows, not legacy authentication protocols. Blocking legacy auth has no effect on this attack.",
+      "oauth-consent-abuse":    "OAuth consent abuse is a modern OAuth flow. Legacy auth blocking does not affect the consent grant mechanism.",
     },
     overview: [
       "Legacy authentication protocols — IMAP, POP3, SMTP AUTH, and Exchange ActiveSync with Basic Authentication — were designed before MFA existed. They authenticate with a username and password alone, and cannot present an MFA claim. More critically, they completely bypass Conditional Access policies. Any user or service account that can authenticate via a legacy protocol is effectively unprotected by your modern auth stack.",
@@ -237,10 +265,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    3,
       "ms-teams-impersonation": 1,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Directly stops token replay — binds access tokens to the specific device and session where they were issued. A stolen token replayed from an attacker's device will be rejected by Entra ID.",
       "ms-teams-impersonation": "Provides post-compromise protection if account takeover occurs following a Teams phishing attack.",
+      "device-code-phishing":   "Tokens obtained via device code flow are issued to the attacker's client, not the victim's device. Token binding cannot bind these tokens to the victim's device — but a CA Authentication Flows policy (co-located with Token Protection in Entra CA) can block device code flow entirely for sensitive apps.",
+      "oauth-consent-abuse":    "Token protection limits the replay value of tokens obtained through consented apps, but does not prevent the initial consent grant.",
     },
     overview: [
       "Token Protection (also called Token Binding) is a Conditional Access Session control that cryptographically binds an access token to the specific device and Entra-registered session where it was issued. When the token is presented from any other device or session, Entra ID detects the mismatch and rejects the authentication — even if the token itself is otherwise valid and unexpired.",
@@ -283,10 +315,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    3,
       "ms-teams-impersonation": 1,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Revokes stolen tokens in near-real-time (within minutes) when a password reset, account disable, or policy violation occurs — dramatically reducing the window a stolen token is useful.",
       "ms-teams-impersonation": "Limits the time window after gaining access via a Teams phishing chain before the session can be revoked.",
+      "device-code-phishing":   "Once a device code token is identified and the account is remediated, CAE forces near-real-time revocation of the issued tokens, limiting attacker dwell time.",
+      "oauth-consent-abuse":    "CAE revokes active sessions quickly but does not revoke OAuth app consent grants — a consented app can silently obtain new tokens until the consent is manually revoked in Entra ID.",
     },
     overview: [
       "Without Continuous Access Evaluation, access tokens remain valid until they naturally expire — which can be 60–90 minutes for access tokens and up to 90 days for refresh tokens. If an account is compromised, security teams must race to revoke sessions before an attacker uses the time window. CAE changes this by establishing a persistent channel between M365 services and Entra ID that allows near-real-time token revocation.",
@@ -326,10 +362,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    3,
       "ms-teams-impersonation": 2,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Blocks or requires step-up authentication when Entra ID Protection detects Anomalous Token, Impossible Travel, or High sign-in risk — the primary real-time enforcement layer for detected token theft.",
       "ms-teams-impersonation": "Catches and blocks high-risk sign-ins that follow a successful Teams phishing chain where credentials were harvested.",
+      "device-code-phishing":   "Conditional Access Authentication Flows policies can block device code flow entirely — this is the primary technical control for preventing device code phishing. Sign-in risk policies also catch anomalous usage of tokens obtained this way.",
+      "oauth-consent-abuse":    "CA User Action policies can require step-up authentication before a consent grant is made, reducing impulsive consent to malicious apps. Does not block consent entirely without additional user consent restriction settings.",
     },
     overview: [
       "Sign-in Risk Conditional Access policies use the risk signals generated by Entra ID Protection to make real-time access decisions. When a user's sign-in is flagged as Medium or High risk — due to anomalous token properties, impossible travel, anonymous IP usage, or other signals — the CA policy can require step-up MFA, force a password change, or block access entirely.",
@@ -376,10 +416,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 1,
+      "device-code-phishing":   1,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Stolen tokens replayed from an unmanaged attacker device fail — the CA policy rejects authentication unless the device is enrolled and compliant.",
       "ms-teams-impersonation": "Limits post-compromise lateral movement by requiring managed, compliant devices for access to sensitive applications.",
+      "device-code-phishing":   "Does not prevent the initial token issuance (the victim's device IS compliant during authentication), but limits what the attacker can access if their client device fails the compliance check.",
+      "oauth-consent-abuse":    "A consented OAuth app can silently refresh tokens; device compliance policies on the user's sign-in don't prevent a server-side app from using a refresh token. Limited protection.",
     },
     overview: [
       "Requiring a compliant or Hybrid Azure AD-joined device as a condition for accessing M365 applications means that even a valid username, password, and MFA cannot gain access from an unknown or unmanaged device. This is powerful because most attackers attempting to replay stolen tokens or use harvested credentials will be operating from their own machines — which will never pass a device compliance check.",
@@ -429,10 +473,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 0,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Shorter token lifetimes reduce the window a stolen token is useful. Disabling persistent browser sessions also limits cookie theft viability — the cookie expires when the browser closes.",
       "ms-teams-impersonation": "Not directly relevant to Teams-based initial access chains.",
+      "device-code-phishing":   "Device code phishing yields a refresh token valid for up to 90 days by default. Enforcing shorter sign-in frequency for sensitive apps means the attacker must re-authenticate more often — each re-auth attempt may fail if the compromise is detected.",
+      "oauth-consent-abuse":    "A consented app holds a refresh token that can silently obtain new access tokens regardless of sign-in frequency policies on the user. Limited protective value against long-lived app tokens.",
     },
     overview: [
       "By default, Microsoft 365 access tokens are valid for 60–90 minutes and refresh tokens for up to 90 days. 'Persistent browser session' cookies can also keep users signed in across browser restarts. If a token or cookie is stolen, the attacker has the full remaining lifetime of that token to operate. This control reduces that window.",
@@ -477,10 +525,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    3,
       "ms-teams-impersonation": 2,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    2,
     },
     why: {
       "session-token-theft":    "Anomalous Token is the highest-fidelity real-time signal for token theft — detecting tokens used from unusual locations, devices, or with anomalous claims.",
       "ms-teams-impersonation": "Detects anomalous sign-in patterns following a successful Teams phishing chain — unusual location, device, or token properties post-credential theft.",
+      "device-code-phishing":   "Entra ID Protection can flag the resulting token as anomalous when it's used from an unusual IP or context. Also detects when the token is later used in ways inconsistent with the victim's normal behavior.",
+      "oauth-consent-abuse":    "Entra ID Protection's risk signals can detect anomalous app consent patterns and unusual API access by consented apps, surfacing suspicious OAuth app activity for investigation.",
     },
     overview: [
       "Entra ID Protection uses machine learning to analyze every sign-in across the Microsoft identity platform and generate risk signals when anomalies are detected. The 'Anomalous Token' risk event specifically detects when an access or refresh token is being used in ways that suggest it was stolen — such as being replayed from a different IP, country, or device than where it was originally issued.",
@@ -532,10 +584,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    0,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   1,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Not related to token theft attack chain.",
       "ms-teams-impersonation": "Single highest-impact control — prevents any external M365 tenant from cold-contacting your users. Eliminates the primary delivery vector for external Teams impersonation campaigns.",
+      "device-code-phishing":   "Device code lures are sometimes delivered via Teams messages from external tenants. Restricting external Teams access removes this delivery vector, though attackers can still use email or LinkedIn.",
+      "oauth-consent-abuse":    "Consent phishing links are sometimes sent via Teams from external tenants. Restricting external access removes this delivery channel but doesn't address the broader OAuth consent surface.",
     },
     overview: [
       "By default, Microsoft 365 tenants allow users from any other M365 tenant to send Teams messages to your users. An attacker needs only a free Microsoft 365 trial account to appear in someone's Teams chat as 'Microsoft Support' or 'IT Help Desk.' The '(External)' label is the only indicator — and most users don't treat it as a red flag.",
@@ -580,10 +636,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    0,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   1,
+      "oauth-consent-abuse":    1,
     },
     why: {
       "session-token-theft":    "Not related to token theft attack chain.",
       "ms-teams-impersonation": "Inspects and blocks malicious URLs sent in Teams messages before the victim can click them — addresses the link-based phishing delivery vector that email security gateways miss entirely.",
+      "device-code-phishing":   "If a device code lure link is sent in a Teams message, Safe Links inspects the URL before the victim visits it — providing a safety net if the lure page is on a known-malicious domain.",
+      "oauth-consent-abuse":    "If an OAuth consent phishing URL is sent via Teams, Safe Links inspects it before the victim can consent. However, consent URLs point to legitimate Microsoft infrastructure and may not be flagged.",
     },
     overview: [
       "Safe Links is Microsoft Defender for Office 365's URL inspection capability. By default it applies to email, but it can be extended to Microsoft Teams. When a user clicks a link in a Teams message, Safe Links rewrites the URL through Microsoft's inspection proxy, detonates it in a sandbox if needed, and blocks access if the destination is known malicious or suspicious.",
@@ -630,10 +690,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    0,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   0,
+      "oauth-consent-abuse":    0,
     },
     why: {
       "session-token-theft":    "Not related to token theft attack chain.",
       "ms-teams-impersonation": "Closes the malware delivery vector used by Storm-0324 and similar actors who distribute malicious executables and scripts (.exe, .vbs, .lnk) via Teams file shares from external-tenant accounts.",
+      "device-code-phishing":   "Device code phishing is delivered via messages or links, not file attachments. This control has no effect.",
+      "oauth-consent-abuse":    "OAuth consent abuse is delivered via consent links, not file shares. This control has no effect.",
     },
     overview: [
       "Microsoft Teams allows guest and external users to share files in chats and channels by default. Storm-0324, documented in Microsoft's September 2023 threat intelligence report, industrialized this vector — creating hundreds of external M365 tenant accounts to deliver DarkGate and Qakbot malware via Teams file attachments at scale. The files bypass email security gateways entirely.",
@@ -675,10 +739,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    0,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   0,
+      "oauth-consent-abuse":    0,
     },
     why: {
       "session-token-theft":    "Not related to token theft attack chain.",
       "ms-teams-impersonation": "Directly blocks a documented attack chain — Black Basta affiliates and Scattered Spider call victims via Teams impersonating IT helpdesk, then request a QuickAssist session to deploy persistent backdoors.",
+      "device-code-phishing":   "Device code phishing does not require remote access software — removing QuickAssist has no effect on this attack.",
+      "oauth-consent-abuse":    "OAuth consent abuse does not involve remote access tools. Not relevant.",
     },
     overview: [
       "Microsoft QuickAssist is a built-in Windows tool that provides screen sharing and remote control for IT support purposes. It requires no administrative privileges to install or accept connections, making it trivially easy for a social engineer to get a victim to hand over control of their device. Unlike enterprise remote access tools, QuickAssist has minimal logging and no integration with security monitoring platforms.",
@@ -722,10 +790,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    1,
       "ms-teams-impersonation": 1,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    2,
     },
     why: {
       "session-token-theft":    "Malicious OAuth apps consented via Teams can provide persistent token-based access that survives password resets.",
       "ms-teams-impersonation": "Prevents attackers from installing malicious Teams apps used as a foothold or data exfiltration channel.",
+      "device-code-phishing":   "Restricting which OAuth apps users can interact with reduces the attack surface for device code phishing campaigns that target specific app client IDs. MDCA App Governance provides visibility into anomalous OAuth app token usage.",
+      "oauth-consent-abuse":    "Restricting Teams app permissions and requiring admin consent for all apps directly limits the OAuth consent attack surface. Combined with MDCA App Governance, this provides visibility into all consented apps and the ability to revoke suspicious grants.",
     },
     overview: [
       "Microsoft Teams allows users to install third-party and custom apps that can request OAuth consent to access M365 data. A malicious Teams app can be used to establish persistent access to a user's mailbox, files, and Teams data — independent of the user's session token — simply by getting the user to consent to its permissions. This is a form of OAuth app abuse.",
@@ -773,10 +845,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 2,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    2,
     },
     why: {
       "session-token-theft":    "Creating forwarding/deletion inbox rules is the first post-compromise action after token theft. Alerting on this catches intrusions early before BEC fraud can occur.",
       "ms-teams-impersonation": "Same post-compromise action follows account takeover via Teams phishing — rapid detection dramatically limits the blast radius.",
+      "device-code-phishing":   "After using a device code token to access the mailbox, attackers immediately create inbox rules. This is a reliable post-compromise indicator regardless of the initial access method.",
+      "oauth-consent-abuse":    "A consented malicious app with Mail.ReadWrite permissions often creates inbox rules to exfiltrate or hide email. These rules appear identically in the Unified Audit Log and are caught by the same alert logic.",
     },
     overview: [
       "In virtually every documented M365 account compromise, one of the first actions an attacker takes is creating an inbox rule to hide evidence — forwarding copies of email to an external address, deleting security alert emails, or moving messages to an obscure folder. This activity is logged in the M365 Unified Audit Log as a 'New-InboxRule' or 'Set-InboxRule' operation.",
@@ -824,10 +900,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   2,
+      "oauth-consent-abuse":    3,
     },
     why: {
       "session-token-theft":    "MDCA detects mass download activity, impossible travel, and anomalous session patterns that indicate an active token theft intrusion in progress.",
       "ms-teams-impersonation": "Provides the richest Teams-specific telemetry available — detects external tenants messaging multiple users, suspicious guest file shares, and unusual Teams activity patterns not visible elsewhere.",
+      "device-code-phishing":   "MDCA detects anomalous OAuth token usage patterns and can alert on device code flow authentications from unknown or high-risk locations.",
+      "oauth-consent-abuse":    "MDCA App Governance is the primary tool for OAuth consent abuse detection — providing full visibility into every app consented in the tenant, the permissions granted, API activity, and the ability to disable malicious apps with one click.",
     },
     overview: [
       "Microsoft Defender for Cloud Apps (MDCA) is a Cloud Access Security Broker (CASB) that provides deep visibility into activity across Microsoft 365 and connected third-party SaaS applications. For M365 defenders, it offers something unavailable in native Entra ID or Exchange logs: behavioral analytics and rich activity policies at the application event level — including Teams-specific events like external messaging patterns, guest file shares, and mass download detection.",
@@ -881,10 +961,14 @@ const CONTROLS = [
     coverage: {
       "session-token-theft":    2,
       "ms-teams-impersonation": 3,
+      "device-code-phishing":   3,
+      "oauth-consent-abuse":    2,
     },
     why: {
       "session-token-theft":    "Users who recognize AiTM phishing patterns (identical-looking login pages, unexpected redirects, urgency cues) are less likely to complete credential submission.",
       "ms-teams-impersonation": "Primary defense against vishing and social engineering. Trained employees know: IT will never call via Teams to ask for MFA approval; urgency from an unknown sender is a red flag.",
+      "device-code-phishing":   "The primary control for device code phishing. No technical control prevents a user from voluntarily entering a device code at microsoft.com/devicelogin. Trained employees know: never enter a device code you didn't initiate yourself.",
+      "oauth-consent-abuse":    "Trained users recognize suspicious OAuth consent prompts — unexpected permission requests, unfamiliar app names, and broad permissions (Mail.ReadWrite, Files.ReadWrite.All) are red flags. Awareness is a key complement to technical app restriction controls.",
     },
     overview: [
       "Security awareness training is frequently undervalued as a technical control — but for social engineering attacks like Teams impersonation and vishing, it is often the first and last line of defense. No technical control prevents an employee from willingly approving an MFA push or installing a remote access tool when an articulate, confident attacker on a Teams call says 'I'm from IT and this is urgent.' Training shapes the behavioral response to exactly these scenarios.",

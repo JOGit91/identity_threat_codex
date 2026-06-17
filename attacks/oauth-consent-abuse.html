@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth Consent Abuse &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="How OAuth consent abuse works in Microsoft 365, how attackers register malicious apps to gain persistent access, detection queries, and hardening steps.">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="../index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="../index.html">Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="../index.html#about">About</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ───────────────────────────────────────────────── -->
+<div class="attack-page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="attack-sidebar">
+    <a class="toc-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      All Attacks
+    </a>
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+      <li><a href="#why-used"><span class="toc-num">02</span> Why Attackers Use It</a></li>
+      <li><a href="#impact"><span class="toc-num">03</span> Impact</a></li>
+      <li><a href="#detection"><span class="toc-num">04</span> Detection &amp; Hunting</a></li>
+      <li><a href="#threat-actors"><span class="toc-num">05</span> Threat Actors</a></li>
+      <li><a href="#follow-on"><span class="toc-num">06</span> Follow-on Activity</a></li>
+      <li><a href="#prevention"><span class="toc-num">07</span> Prevention</a></li>
+      <li><a href="#resources"><span class="toc-num">08</span> Resources</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="attack-content">
+
+    <div class="attack-breadcrumb">
+      <a href="../index.html">M365 Identity Threat Codex</a>
+      <span class="sep">&rsaquo;</span>
+      <span>OAuth Consent Abuse</span>
+    </div>
+
+    <header class="attack-header">
+      <h1 class="attack-title">OAuth Consent Abuse</h1>
+      <div class="attack-meta">
+        <span class="sev-badge sev-critical">Critical</span>
+        <span class="meta-pill">Persistence</span>
+        <span class="meta-pill">Credential Access</span>
+        <span class="meta-pill mitre">T1550.001</span>
+        <span class="meta-pill mitre">T1528</span>
+        <span class="meta-pill">Updated Jun 2025</span>
+      </div>
+      <p class="attack-summary">
+        OAuth consent abuse — also called illicit consent grant or OAuth phishing — tricks a user into granting a malicious application persistent, delegated access to their Microsoft 365 data. The access survives password resets, MFA changes, and session revocations because it operates through an OAuth refresh token bound to the application, not to the user's session.
+      </p>
+    </header>
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section id="overview" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        What is OAuth Consent Abuse?
+        <span class="section-num">01</span>
+      </h2>
+
+      <p>
+        Microsoft 365 uses OAuth 2.0 to allow third-party applications to access user data — with the user's permission. When you connect an app like Salesforce, Zoom, or a productivity tool to your Microsoft account, you're presented with a consent screen listing the permissions the app is requesting: "Read your email," "Access your files," "Sign you in." If you click Accept, Microsoft issues the app a refresh token it can use to access your data on your behalf, indefinitely.
+      </p>
+      <p>
+        OAuth consent abuse exploits this legitimate mechanism. The attack works as follows:
+      </p>
+      <ol>
+        <li>The attacker registers a malicious application in a Microsoft Entra ID tenant they control. The app is given a convincing display name: "M365 Security Update," "Microsoft Teams Integration," "IT Help Desk Portal."</li>
+        <li>The attacker crafts an OAuth authorization URL specifying the malicious app's client ID and a list of high-value permission scopes (<code>Mail.ReadWrite</code>, <code>Files.ReadWrite.All</code>, <code>User.Read.All</code>).</li>
+        <li>The link is sent to the victim — via phishing email, Teams message, LinkedIn, or SMS — with a pretext compelling them to click it.</li>
+        <li>The victim is taken to the <strong>genuine Microsoft consent page</strong> at <code>login.microsoftonline.com</code>. They authenticate with their real credentials and MFA. Microsoft displays the consent prompt for the malicious app.</li>
+        <li>If the victim clicks Accept, Microsoft issues the malicious app a <strong>refresh token</strong>. The attacker now has persistent, application-level access to the victim's data — with no further involvement from the victim required.</li>
+      </ol>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">This Persists Through Everything</span>
+        <p>An OAuth app consent grant is not tied to a session, a password, or an MFA device. If the victim changes their password, the app's refresh token remains valid. If the victim revokes all sessions, the app's token remains valid. The only way to terminate access is to explicitly revoke the consent grant in Entra ID — which most users have no visibility into and no habit of checking.</p>
+      </div>
+
+      <h3>User vs. Admin Consent</h3>
+      <p>
+        Microsoft 365 has two consent types: <strong>user consent</strong> (a single user can approve the app for their own data) and <strong>admin consent</strong> (a Global Admin approves the app for the entire organization). By default in many tenants, users can consent to apps requesting low-privilege permissions without any admin approval. This is the gap that consent abuse exploits — the victim is an ordinary user, and they have the authority to consent without IT ever seeing a notification.
+      </p>
+    </section>
+
+    <!-- ── 02 WHY USED ── -->
+    <section id="why-used" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        Why Do Threat Actors Use It?
+        <span class="section-num">02</span>
+      </h2>
+
+      <ul>
+        <li><strong>The access is persistent by design.</strong> OAuth refresh tokens for confidential clients can have lifetimes measured in months or years. The attacker maintains continuous access to the victim's mailbox and files without any further phishing, credential theft, or attacker-side activity that would trigger detection.</li>
+        <li><strong>Password resets don't help.</strong> Security teams who detect a compromised account typically force a password reset as their first containment action. For OAuth consent abuse, this does nothing — the app's token is not tied to the user's password.</li>
+        <li><strong>The consent page is Microsoft's real page.</strong> The victim is authenticating to a legitimate Microsoft URL. There is no fake login page to detect, no certificate warning, no phishing domain. Security gateways have nothing to block.</li>
+        <li><strong>Abuse happens server-side, silently.</strong> Once consent is granted, the attacker's application silently calls the Microsoft Graph API from their infrastructure. There is no sign-in event in the victim's account from the attacker's IP — only application access events that blend into normal background noise.</li>
+        <li><strong>Useful even with low privileges.</strong> Even <code>Mail.Read</code> (read-only mailbox access) is enormously valuable for business email compromise reconnaissance. The attacker reads months of email to understand payment processes, active vendors, and executive relationships — without needing elevated privileges.</li>
+        <li><strong>Low technical barrier.</strong> Registering an Entra ID app requires only a free Microsoft 365 account and a few minutes in the Azure Portal. Crafting the consent URL is a matter of substituting your app's client ID into a template.</li>
+      </ul>
+    </section>
+
+    <!-- ── 03 IMPACT ── -->
+    <section id="impact" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        What Happens If Attackers Succeed?
+        <span class="section-num">03</span>
+      </h2>
+
+      <h3>Delegated Access by Scope</h3>
+      <p>The impact depends on which permissions the attacker requested and the victim consented to. Common high-value scopes:</p>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr><th>Scope</th><th>Access Granted</th><th>Attacker Use</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code class="inline">Mail.ReadWrite</code></td>
+              <td>Read, send, delete, and organize email</td>
+              <td>BEC reconnaissance, inbox rule creation, impersonation</td>
+            </tr>
+            <tr>
+              <td><code class="inline">Files.ReadWrite.All</code></td>
+              <td>Full OneDrive and SharePoint file access</td>
+              <td>Data exfiltration, ransomware staging</td>
+            </tr>
+            <tr>
+              <td><code class="inline">Contacts.ReadWrite</code></td>
+              <td>Read and modify contacts</td>
+              <td>Harvest targets for further phishing; map organizational relationships</td>
+            </tr>
+            <tr>
+              <td><code class="inline">User.ReadBasic.All</code></td>
+              <td>Read names, emails, titles of all users</td>
+              <td>Directory enumeration; target selection for BEC</td>
+            </tr>
+            <tr>
+              <td><code class="inline">offline_access</code></td>
+              <td>Persistent refresh token (no expiry on access)</td>
+              <td>Long-term silent access; this scope is almost always included in malicious consent requests</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Why This Is Particularly Dangerous for BEC</h3>
+      <p>
+        Business Email Compromise attackers who gain <code>Mail.ReadWrite</code> consent on a finance or executive account can read months of email history silently, with no sign-in event on the user's record. They identify active payment workflows, vendor relationships, and pending wire transfers. When ready to strike, they create inbox rules to hide replies and initiate fraudulent wire transfer requests — all while the legitimate user continues working from their account with no indication of compromise.
+      </p>
+
+      <div class="callout callout-warning">
+        <span class="callout-title">Incident Response Blind Spot</span>
+        <p>When organizations discover a BEC incident and force a password reset, the attacker's OAuth app retains access. Incomplete remediation that misses consent grants is documented in multiple incident response reports as the reason re-compromise occurred within hours of the initial response.</p>
+      </div>
+    </section>
+
+    <!-- ── 04 DETECTION ── -->
+    <section id="detection" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        Detection &amp; Threat Hunting
+        <span class="section-num">04</span>
+      </h2>
+
+      <h3>Log Sources</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What to Look For</th>
+              <th>Table (Sentinel)</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-source">Entra ID Audit Logs</td>
+              <td><strong>Consent to application</strong> events; pay attention to publisher verification status (unverified publishers are high risk), permissions granted, and whether consent was user-level or admin-level</td>
+              <td><code class="inline">AuditLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">M365 Unified Audit Log</td>
+              <td>Application consent events (<code>ConsentToApplication</code>); Mail access by service principals rather than by users; high-volume Graph API file access</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Sign-in Logs</td>
+              <td>Service principal sign-ins (non-interactive) from unusual IPs following a user consent event; token refresh activity for the consented app from unexpected locations</td>
+              <td><code class="inline">AADServicePrincipalSignInLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Defender for Cloud Apps (App Governance)</td>
+              <td>New app registrations with high-privilege scopes; unverified publisher apps; apps with unusual API access patterns; consent anomaly detections</td>
+              <td><code class="inline">CloudAppEvents</code></td>
+              <td><span class="req-badge req-p2">MDCA License</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Hunt Query 1 — Consent Grants to Unverified Publishers</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; AuditLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Consent grants where the app publisher is not verified by Microsoft
+// Unverified publishers are a strong risk indicator for malicious apps
+AuditLogs
+| where TimeGenerated > ago(30d)
+| where OperationName == "Consent to application"
+| mv-expand TargetResources
+| extend AppName = tostring(TargetResources.displayName)
+| extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| extend ModifiedProps = TargetResources.modifiedProperties
+| mv-expand ModifiedProps
+| extend PropName = tostring(ModifiedProps.displayName)
+| extend PropValue = tostring(ModifiedProps.newValue)
+| where PropName == "ConsentType"
+| extend ConsentType = PropValue
+| project
+    TimeGenerated,
+    InitiatedBy,
+    AppName,
+    ConsentType,
+    Result,
+    CorrelationId
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 2 — High-Privilege Consent Grants</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; AuditLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// OAuth consent grants that include high-value mail, file, or directory permissions
+AuditLogs
+| where TimeGenerated > ago(90d)
+| where OperationName == "Consent to application"
+| mv-expand TargetResources
+| mv-expand TargetResources.modifiedProperties
+| extend PropName = tostring(TargetResources_modifiedProperties.displayName)
+| extend PropValue = tostring(TargetResources_modifiedProperties.newValue)
+| where PropName == "ConsentAction.Permissions"
+| where PropValue has_any (
+    "Mail.ReadWrite",
+    "Mail.Send",
+    "Files.ReadWrite.All",
+    "User.ReadWrite.All",
+    "Directory.ReadWrite.All",
+    "full_access_as_user",
+    "offline_access"
+  )
+| extend Initiator = tostring(InitiatedBy.user.userPrincipalName)
+| project
+    TimeGenerated,
+    Initiator,
+    PermissionsGranted = PropValue,
+    Result
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 3 — Service Principal Accessing Mail After Recent Consent</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; AuditLogs + OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// App (service principal) accessing mailbox within 24h of a consent event
+// Indicates rapid exploitation of a freshly granted consent
+let RecentConsents = AuditLogs
+| where TimeGenerated > ago(30d)
+| where OperationName == "Consent to application"
+| mv-expand TargetResources
+| project ConsentTime = TimeGenerated,
+    AppName = tostring(TargetResources.displayName),
+    ConsentedBy = tostring(InitiatedBy.user.userPrincipalName);
+OfficeActivity
+| where TimeGenerated > ago(30d)
+| where Operation in ("MailItemsAccessed", "Send")
+| where ClientAppId != ""  // Filter to application-level access (not user sessions)
+| project AccessTime = TimeGenerated, UserId, ClientAppId, Operation
+| join kind=inner RecentConsents on $left.UserId == $right.ConsentedBy
+| where AccessTime between (ConsentTime .. (ConsentTime + 24h))
+| project ConsentTime, AccessTime, UserId, AppName, Operation</code></pre>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-title">MDCA App Governance is the Best Tool for This</span>
+        <p>Manual KQL hunting is important for existing compromises. For ongoing protection, Microsoft Defender for Cloud Apps App Governance provides a dedicated consent app dashboard with risk scoring, anomaly detection, and one-click app disabling. It surfaces high-risk apps immediately — including those with <code>offline_access</code> + high-privilege scopes consented by non-admin users.</p>
+      </div>
+    </section>
+
+    <!-- ── 05 THREAT ACTORS ── -->
+    <section id="threat-actors" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        Threat Actors
+        <span class="section-num">05</span>
+      </h2>
+
+      <h3>Midnight Blizzard (APT29)</h3>
+      <p>
+        Russia's SVR is documented using OAuth app registration as a persistence and lateral movement technique after initial access is obtained. After compromising a user via other means, Midnight Blizzard registers OAuth apps in the victim's tenant or uses existing apps to maintain persistent access that survives credential resets. Their 2023 campaign against Microsoft's own corporate environment involved malicious OAuth apps used to access source code repositories and internal email.
+      </p>
+
+      <h3>Storm-0062 and Similar BEC Actors</h3>
+      <p>
+        Financially motivated actors targeting business email compromise frequently combine credential phishing with OAuth consent phishing. After initial access, they pivot to registering malicious apps to create a persistent foothold in the mailbox that survives the inevitable password reset triggered when the victim or IT notices unusual activity.
+      </p>
+
+      <h3>Scatter Swine / Scattered Spider</h3>
+      <p>
+        Scattered Spider (tracked as UNC3944 / Octo Tempest) has used OAuth application abuse as part of their broader M365 persistence toolkit. Their initial access via Teams impersonation and vishing is often followed by OAuth app consent abuse to establish persistent access independent of any single compromised credential.
+      </p>
+
+      <h3>Commodity Threat Actors</h3>
+      <p>
+        Microsoft's 2023 detection of the "illicit consent grant" attack pattern documented a broad campaign of consent phishing targeting Microsoft 365 users with apps requesting Mail.Read and Contacts.Read permissions. The campaign was not attributed to a named actor — illustrating that this technique has diffused beyond nation-state operators into the broader threat actor ecosystem.
+      </p>
+    </section>
+
+    <!-- ── 06 FOLLOW-ON ── -->
+    <section id="follow-on" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </span>
+        Follow-on Activity
+        <span class="section-num">06</span>
+      </h2>
+
+      <ul>
+        <li><strong>Silent, long-term mailbox surveillance:</strong> With <code>Mail.Read</code>, the attacker's app polls the victim's inbox via Graph API. From the attacker's perspective, this is just an API call from their server — it produces no sign-in event in the victim's account and blends into normal application background traffic.</li>
+        <li><strong>Inbox rule creation via Graph API:</strong> Using <code>Mail.ReadWrite</code>, the attacker creates forwarding or deletion rules through the API — which appear identically to user-created rules in audit logs and are caught by the same alert logic.</li>
+        <li><strong>Data exfiltration:</strong> With <code>Files.ReadWrite.All</code>, the attacker bulk-downloads OneDrive and SharePoint files via Graph. This may appear as application-level file access rather than user-driven access, potentially bypassing user-focused DLP controls.</li>
+        <li><strong>Token propagation to other users:</strong> If the consented app has <code>User.ReadBasic.All</code> or directory read permissions, the attacker can enumerate all users and send targeted consent phishing links to additional victims — expanding their foothold across the tenant.</li>
+        <li><strong>Persistence across remediation:</strong> When a compromised account is discovered, the standard response (password reset, session revocation) leaves the OAuth app consent intact. The attacker retains access until the consent grant is explicitly revoked in Entra ID — which many incident response teams miss.</li>
+      </ul>
+    </section>
+
+    <!-- ── 07 PREVENTION ── -->
+    <section id="prevention" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        Prevention
+        <span class="section-num">07</span>
+      </h2>
+
+      <div class="callout callout-info">
+        <span class="callout-title">The Primary Control: Restrict User Consent in Entra ID</span>
+        <p>Entra ID has a tenant-wide setting that controls what users can consent to without admin approval. The most secure setting is <strong>"Do not allow user consent"</strong> — all app consent requires an admin to approve. A practical middle ground is <strong>"Allow user consent for apps from verified publishers only"</strong> combined with a user consent workflow that routes requests to an admin for approval. This eliminates the ability to consent to apps from unverified publishers — the most common malicious app category.</p>
+      </div>
+
+      <h3>Key Prevention Controls</h3>
+      <ul>
+        <li>
+          <strong>Disable or restrict user consent in Entra ID</strong> — Entra ID admin center → Enterprise applications → Consent and permissions → User consent settings. Set to "Do not allow user consent" or "Allow for verified publishers with low-risk permissions" and enable the admin consent workflow.
+        </li>
+        <li>
+          <strong>Deploy MDCA App Governance</strong> — Provides full visibility into all OAuth apps consented in the tenant, with risk scoring, anomaly detection, and the ability to disable suspicious apps immediately without revoking the user's account.
+        </li>
+        <li>
+          <strong>Audit existing consent grants</strong> — Before locking down new consents, audit what's already there: Entra ID → Enterprise applications → All applications, filter by "User assigned" and sort by "Permissions." Any app with broad Mail or Files permissions from an unverified publisher warrants investigation.
+        </li>
+        <li>
+          <strong>Security awareness training</strong> — Train users to recognize the signs of a malicious consent prompt: unfamiliar app name, broad permissions (especially <code>offline_access</code> + <code>Mail.ReadWrite</code>), and a sense of urgency in the lure message.
+        </li>
+        <li>
+          <strong>Include consent revocation in incident response procedures</strong> — Every M365 incident response runbook should include a step to check for and revoke OAuth consent grants in Entra ID → Enterprise applications. Password reset alone is not sufficient containment.
+        </li>
+        <li>
+          <strong>Restrict Teams app permissions</strong> — Teams apps that request OAuth consent follow the same consent mechanism. An allowlist-only Teams app policy prevents malicious apps from being installed through the Teams channel.
+        </li>
+      </ul>
+
+      <p>See the <a href="../hardening.html" style="color:var(--accent);font-weight:600;">Hardening Matrix</a> for implementation complexity and licensing details for each of these controls.</p>
+    </section>
+
+    <!-- ── 08 RESOURCES ── -->
+    <section id="resources" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+        </span>
+        Further Reading
+        <span class="section-num">08</span>
+      </h2>
+
+      <ul>
+        <li><a href="https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent" target="_blank" rel="noopener">Microsoft Learn — Configure user consent to applications in Entra ID</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/defender-cloud-apps/app-governance-manage-app-governance" target="_blank" rel="noopener">Microsoft Learn — Microsoft Defender for Cloud Apps: App Governance</a></li>
+        <li><a href="https://www.microsoft.com/en-us/security/blog/2021/11/08/detecting-and-mitigating-microsoft-365-illicit-consent-grant-attacks/" target="_blank" rel="noopener">Microsoft Security Blog — Detecting and mitigating illicit consent grant attacks (2021)</a></li>
+        <li><a href="https://attack.mitre.org/techniques/T1550/001/" target="_blank" rel="noopener">MITRE ATT&amp;CK — T1550.001: Use Alternate Authentication Material: Application Access Token</a></li>
+        <li><a href="https://github.com/AzureAD/Microsoft-Authentication-Library-for-dotnet/wiki/Acquiring-tokens-with-authorization-codes-on-web-apps" target="_blank" rel="noopener">MSAL — OAuth authorization code flow reference</a></li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="../index.html">All Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/main.js"></script>
+</body>
+</html>

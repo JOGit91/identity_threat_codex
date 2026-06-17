@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Code Phishing &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="How device code phishing works in Microsoft 365, why it bypasses MFA, detection queries, threat actors, and hardening steps for defenders.">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="../index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="../index.html">Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="../index.html#about">About</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ───────────────────────────────────────────────── -->
+<div class="attack-page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="attack-sidebar">
+    <a class="toc-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      All Attacks
+    </a>
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+      <li><a href="#why-used"><span class="toc-num">02</span> Why Attackers Use It</a></li>
+      <li><a href="#impact"><span class="toc-num">03</span> Impact</a></li>
+      <li><a href="#detection"><span class="toc-num">04</span> Detection &amp; Hunting</a></li>
+      <li><a href="#threat-actors"><span class="toc-num">05</span> Threat Actors</a></li>
+      <li><a href="#follow-on"><span class="toc-num">06</span> Follow-on Activity</a></li>
+      <li><a href="#prevention"><span class="toc-num">07</span> Prevention</a></li>
+      <li><a href="#resources"><span class="toc-num">08</span> Resources</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="attack-content">
+
+    <div class="attack-breadcrumb">
+      <a href="../index.html">M365 Identity Threat Codex</a>
+      <span class="sep">&rsaquo;</span>
+      <span>Device Code Phishing</span>
+    </div>
+
+    <header class="attack-header">
+      <h1 class="attack-title">Device Code Phishing</h1>
+      <div class="attack-meta">
+        <span class="sev-badge sev-critical">Critical</span>
+        <span class="meta-pill">Credential Access</span>
+        <span class="meta-pill">Initial Access</span>
+        <span class="meta-pill mitre">T1528</span>
+        <span class="meta-pill mitre">T1566</span>
+        <span class="meta-pill">Updated Jun 2025</span>
+      </div>
+      <p class="attack-summary">
+        Device code phishing abuses the OAuth 2.0 device authorization flow — a legitimate Microsoft authentication mechanism designed for input-constrained devices — to trick users into handing attackers a fully authenticated token. MFA is completed by the victim against Microsoft's real servers, and the attacker receives a valid access and refresh token without ever touching the login page.
+      </p>
+    </header>
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section id="overview" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        What is Device Code Phishing?
+        <span class="section-num">01</span>
+      </h2>
+
+      <p>
+        The <strong>OAuth 2.0 Device Authorization Grant</strong> (RFC 8628) was designed for smart TVs, printers, and other devices that can't display a browser or accept text input efficiently. The flow works like this: the device requests a short code from the authorization server, displays it to the user, and asks them to visit a URL on another device (like a phone or laptop) to approve the authentication. Microsoft 365 supports this flow at <code>microsoft.com/devicelogin</code>.
+      </p>
+      <p>
+        Attackers have weaponized this legitimate flow. The attack sequence is straightforward:
+      </p>
+      <ol>
+        <li>The attacker calls Microsoft's device code endpoint, specifying an OAuth client ID (often a well-known Microsoft app like Microsoft Office or Azure CLI).</li>
+        <li>Microsoft returns a <strong>user_code</strong> (e.g., <code>ABCD-EFGH</code>) and a verification URI (<code>microsoft.com/devicelogin</code>).</li>
+        <li>The attacker sends the victim a convincing message — via email, Teams, LinkedIn, or SMS — instructing them to visit the real Microsoft URL and enter the code. The pretext is typically an IT action, software activation, or security verification.</li>
+        <li>The victim navigates to the genuine Microsoft login page, authenticates with their real credentials, and completes MFA.</li>
+        <li>The attacker, who has been polling Microsoft's token endpoint since step 1, immediately receives an <strong>access token and refresh token</strong> for the victim's account.</li>
+      </ol>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">The Critical Insight: The Victim Does Everything Right</span>
+        <p>The victim visits a real Microsoft URL. They enter their real password. They complete their real MFA. From the victim's perspective, nothing is wrong — there is no fake login page, no certificate warning, no unusual redirect. The attacker gets a legitimate token because the victim genuinely authenticated.</p>
+      </div>
+
+      <p>
+        The attack is also persistent by design. Microsoft issues both an <strong>access token</strong> (valid 60–90 minutes) and a <strong>refresh token</strong> (valid up to 90 days). The attacker can silently mint new access tokens for months without any further victim interaction.
+      </p>
+    </section>
+
+    <!-- ── 02 WHY USED ── -->
+    <section id="why-used" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        Why Do Threat Actors Use It?
+        <span class="section-num">02</span>
+      </h2>
+
+      <ul>
+        <li><strong>MFA is not bypassed — it's completed.</strong> Unlike AiTM phishing, there is no proxy in the middle. The victim genuinely satisfies MFA. This means phishing-resistant MFA (FIDO2) offers no protection — the binding is to Microsoft's legitimate domain, which is exactly where the victim authenticates.</li>
+        <li><strong>No infrastructure required.</strong> AiTM attacks require a reverse proxy server, domain, TLS certificate, and a phishing kit. Device code phishing requires only the ability to send a message and a terminal to run a single API call. The barrier to entry is extremely low.</li>
+        <li><strong>The URL is real.</strong> The victim visits <code>microsoft.com/devicelogin</code> — an authentic Microsoft domain. Email gateways, safe links, and browser warnings have nothing to flag. There is no phishing domain to block.</li>
+        <li><strong>Works cross-platform.</strong> The attack works regardless of whether the victim uses Windows, macOS, iOS, or Android. The victim is just visiting a web page.</li>
+        <li><strong>Long-lived tokens.</strong> Refresh tokens are valid for up to 90 days. The attacker can maintain silent access for months without repeat interaction with the victim.</li>
+        <li><strong>Widely documented in nation-state campaigns.</strong> Russian threat actors — notably Midnight Blizzard (APT29) and Star Blizzard — have used device code phishing extensively against government targets, think tanks, and NGOs. Tooling and tradecraft are well-established.</li>
+      </ul>
+    </section>
+
+    <!-- ── 03 IMPACT ── -->
+    <section id="impact" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        What Happens If Attackers Succeed?
+        <span class="section-num">03</span>
+      </h2>
+
+      <p>The scope of access depends on which OAuth scopes the attacker requested when initiating the device code flow. Common scopes used in attacks include <code>https://graph.microsoft.com/.default</code> — granting broad Microsoft Graph access — which translates to:</p>
+
+      <h3>Immediate Access</h3>
+      <ul>
+        <li><strong>Exchange Online (email):</strong> Full read access to the victim's mailbox via Microsoft Graph. Attackers immediately query for emails containing keywords like "wire transfer," "invoice," "credentials," and "password."</li>
+        <li><strong>OneDrive &amp; SharePoint:</strong> Read access to all files the victim has permission to access. Intellectual property, financial records, HR data, and client information are all reachable via Graph API calls.</li>
+        <li><strong>Microsoft Teams:</strong> Access to Teams messages and channels the victim can read. Allows reconnaissance of organizational structure, active projects, and internal communications without leaving visible trace in most logging configurations.</li>
+        <li><strong>Entra ID (if scoped):</strong> Read access to directory objects, users, groups, and role assignments — valuable for privilege escalation targeting.</li>
+      </ul>
+
+      <h3>Persistence Without the Victim</h3>
+      <ul>
+        <li><strong>Silent token refresh:</strong> The refresh token silently obtains new access tokens for up to 90 days. No sign-in event visible to the user, no MFA prompt, no opportunity for detection via normal authentication monitoring.</li>
+        <li><strong>New device registration:</strong> Using the Graph API with the token, attackers can register a new Entra-joined device, obtaining a device-bound token that survives a password reset.</li>
+        <li><strong>Additional MFA method registration:</strong> If MFA registration is not restricted by Conditional Access, attackers can add their own authenticator to the account.</li>
+        <li><strong>OAuth app consent:</strong> The attacker can use the token to consent to additional OAuth applications, creating multiple persistent access paths.</li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <span class="callout-title">Password Reset Does Not Terminate Access</span>
+        <p>A refresh token issued before a password reset remains valid unless explicitly revoked. Incident responders must call <strong>Revoke-MgUserAuthenticationMethod</strong> or use the Entra ID portal to revoke all refresh tokens as part of containment. Password reset alone is insufficient.</p>
+      </div>
+    </section>
+
+    <!-- ── 04 DETECTION ── -->
+    <section id="detection" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        Detection &amp; Threat Hunting
+        <span class="section-num">04</span>
+      </h2>
+
+      <h3>Log Sources</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What to Look For</th>
+              <th>Table (Sentinel)</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-source">Entra ID Sign-in Logs</td>
+              <td>Authentication protocol = <strong>Device Code</strong>; sign-ins where client app is "Microsoft Office" or "Azure CLI" from unexpected IPs; token refresh events with no corresponding user session</td>
+              <td><code class="inline">SigninLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Non-Interactive Sign-in Logs</td>
+              <td>Refresh token redemptions occurring from IPs or countries inconsistent with the user's known locations — these are the silent attacker-side refreshes</td>
+              <td><code class="inline">AADNonInteractiveUserSignInLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Protection</td>
+              <td><strong>Anomalous Token</strong> risk events; Unfamiliar sign-in properties; Impossible travel between interactive sign-in and subsequent token use</td>
+              <td><code class="inline">AADUserRiskEvents</code></td>
+              <td><span class="req-badge req-p1">P2 Required</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">M365 Unified Audit Log</td>
+              <td>New inbox rules post-authentication; mass mail read; file downloads from unusual locations</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Audit Logs</td>
+              <td>Device registrations, new MFA methods, role assignments, consent grants — all immediately following a device code authentication event</td>
+              <td><code class="inline">AuditLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Hunt Query 1 — Identify Device Code Flow Sign-ins</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Identify successful sign-ins using device code flow
+// Device code sign-ins should be rare in most orgs — any unexpected use warrants investigation
+SigninLogs
+| where TimeGenerated > ago(30d)
+| where AuthenticationProtocol == "deviceCode" or ClientAppUsed == "Device Login"
+| where ResultType == 0  // Successful only
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    AppDisplayName,
+    ClientAppUsed,
+    IPAddress,
+    LocationDetails,
+    DeviceDetail,
+    AuthenticationProtocol,
+    TokenIssuerType
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 2 — Silent Token Refresh from Unexpected Location</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; AADNonInteractiveUserSignInLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Non-interactive token refreshes from a country not seen in the user's interactive sign-ins
+// This detects attacker-side token refresh that is geographically inconsistent with the victim
+let InteractiveCountries = SigninLogs
+| where TimeGenerated > ago(30d)
+| where ResultType == 0
+| summarize KnownCountries = make_set(tostring(LocationDetails.countryOrRegion))
+    by UserPrincipalName;
+AADNonInteractiveUserSignInLogs
+| where TimeGenerated > ago(7d)
+| where ResultType == 0
+| extend Country = tostring(LocationDetails.countryOrRegion)
+| join kind=leftouter InteractiveCountries on UserPrincipalName
+| where not(set_has_element(KnownCountries, Country))
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    AppDisplayName,
+    IPAddress,
+    Country,
+    KnownCountries
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 3 — Device Code Authentication Followed by Inbox Rule Creation</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs + OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Device code sign-in followed by suspicious inbox rule within 1 hour
+// High-confidence indicator of post-compromise activity
+let DeviceCodeSignins = SigninLogs
+| where TimeGenerated > ago(30d)
+| where AuthenticationProtocol == "deviceCode"
+| where ResultType == 0
+| project SigninTime = TimeGenerated, UserPrincipalName, IPAddress;
+OfficeActivity
+| where TimeGenerated > ago(30d)
+| where Operation in ("New-InboxRule", "Set-InboxRule")
+| where Parameters has_any ("DeleteMessage", "ForwardTo", "RedirectTo", "MoveToFolder")
+| project RuleTime = TimeGenerated, UserId, Operation, Parameters
+| join kind=inner DeviceCodeSignins on $left.UserId == $right.UserPrincipalName
+| where RuleTime between (SigninTime .. (SigninTime + 1h))
+| project SigninTime, RuleTime, UserId, IPAddress, Operation, Parameters</code></pre>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-title">Baseline First</span>
+        <p>In most enterprise tenants, the device code flow is legitimately used by Azure CLI, some PowerShell modules, and developer tools. Before alerting on all device code sign-ins, run Hunt Query 1 across 30 days to establish your baseline. Alert on <em>deviations</em> from that baseline — new apps, new countries, unexpected user populations.</p>
+      </div>
+    </section>
+
+    <!-- ── 05 THREAT ACTORS ── -->
+    <section id="threat-actors" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        Threat Actors
+        <span class="section-num">05</span>
+      </h2>
+
+      <h3>Midnight Blizzard (APT29 / Cozy Bear)</h3>
+      <p>
+        Russia's SVR foreign intelligence service. Microsoft and industry researchers documented Midnight Blizzard using device code phishing against government agencies, NGOs, think tanks, and research institutions across Europe and North America. Their campaigns are meticulously crafted — impersonating Microsoft support, security teams, or IT administrators via email and WhatsApp. The pretext often references an urgent security action, multi-factor authentication configuration, or software update.
+      </p>
+
+      <h3>Star Blizzard (SEABORGIUM / Callisto Group)</h3>
+      <p>
+        FSB-linked threat actor targeting Western government officials, journalists, academics, and defense sector organizations. Star Blizzard has extensively used device code phishing in credential harvesting campaigns, often preceded by extended spear-phishing reconnaissance. They frequently impersonate colleagues, conference organizers, or known contacts to increase the likelihood the victim completes the device code entry.
+      </p>
+
+      <h3>Storm-2372</h3>
+      <p>
+        A threat cluster tracked by Microsoft using device code phishing at scale against a broad range of organizations in Europe and North America. Active campaigns in 2024–2025 used Teams, WhatsApp, Signal, and email as delivery channels. The volume and targeting breadth suggest a financially motivated or broad espionage mandate rather than highly targeted intelligence collection.
+      </p>
+
+      <h3>Financially Motivated Actors (BEC)</h3>
+      <p>
+        Device code phishing is increasingly appearing in Business Email Compromise operations outside of nation-state contexts. The technique's low infrastructure requirements make it accessible to less sophisticated actors. BEC actors use it to gain access to finance department mailboxes and SharePoint documents for wire fraud operations.
+      </p>
+    </section>
+
+    <!-- ── 06 FOLLOW-ON ── -->
+    <section id="follow-on" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </span>
+        Follow-on Activity
+        <span class="section-num">06</span>
+      </h2>
+
+      <p>After obtaining a token via device code phishing, documented follow-on activity includes:</p>
+      <ul>
+        <li><strong>Email reconnaissance:</strong> Search of the mailbox for keywords related to financials, credentials, VPN access, and organizational structure using Graph API calls that appear as background application access, not user-driven sign-ins.</li>
+        <li><strong>Inbox rule creation:</strong> Forwarding rules to attacker-controlled mailboxes; deletion rules targeting security alert emails.</li>
+        <li><strong>Device registration:</strong> Registering a new Entra ID-joined device using the token, obtaining a persistent hardware-bound credential.</li>
+        <li><strong>OAuth app consent:</strong> Using the token to consent additional malicious OAuth applications, creating redundant access paths that survive password resets and token revocation.</li>
+        <li><strong>SharePoint / OneDrive enumeration:</strong> Bulk download of accessible documents for exfiltration or further targeting.</li>
+        <li><strong>Lateral movement via email:</strong> Sending device code phishing lures to the victim's contacts from the compromised account, extending the campaign to additional targets with the added credibility of a known sender.</li>
+      </ul>
+    </section>
+
+    <!-- ── 07 PREVENTION ── -->
+    <section id="prevention" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        Prevention
+        <span class="section-num">07</span>
+      </h2>
+
+      <div class="callout callout-info">
+        <span class="callout-title">The Primary Control: Block Device Code Flow in Conditional Access</span>
+        <p>Entra ID Conditional Access has an <strong>Authentication Flows</strong> condition (generally available as of 2024) that explicitly allows or blocks the device code flow. For most organizations where end users do not need the device code flow, blocking it entirely for non-privileged users eliminates the attack surface at the source. This requires Entra ID P1 licensing.</p>
+      </div>
+
+      <h3>Key Prevention Controls</h3>
+      <ul>
+        <li>
+          <strong>Block device code flow via Conditional Access Authentication Flows</strong> — The single most effective technical control. Create a CA policy targeting all users, set Authentication Flow condition to Device Code Flow, and block. Scope exclusions for any legitimate service accounts or admin workflows that require it.
+        </li>
+        <li>
+          <strong>Security awareness training</strong> — The only control that works regardless of what flow is being abused. Train users: <em>never enter a device code at microsoft.com/devicelogin unless you personally initiated a sign-in on a device that asked you to go there.</em> Urgency, unsolicited requests, and IT impersonation are red flags.
+        </li>
+        <li>
+          <strong>Token lifetime policies</strong> — Reduce refresh token lifetimes for non-compliant scenarios. Enforcing shorter sign-in frequencies means attackers must re-authenticate more often, increasing detection opportunities.
+        </li>
+        <li>
+          <strong>Continuous Access Evaluation</strong> — Ensures that once the compromise is detected and the account is remediated, active tokens are revoked in near-real-time rather than waiting out the full lifetime.
+        </li>
+        <li>
+          <strong>Entra ID Protection</strong> — The Anomalous Token and Unfamiliar Sign-in Properties detections catch post-issuance anomalous usage. Combined with a Sign-in Risk CA policy, this provides automated response when unusual token activity is detected.
+        </li>
+        <li>
+          <strong>Restrict MFA method registration</strong> — Block the most common follow-on persistence action: registering a new authenticator from an untrusted location post-compromise.
+        </li>
+      </ul>
+
+      <p>See the <a href="../hardening.html" style="color:var(--accent);font-weight:600;">Hardening Matrix</a> for implementation complexity and licensing details for each of these controls.</p>
+    </section>
+
+    <!-- ── 08 RESOURCES ── -->
+    <section id="resources" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+        </span>
+        Further Reading
+        <span class="section-num">08</span>
+      </h2>
+
+      <ul>
+        <li><a href="https://www.microsoft.com/en-us/security/blog/2025/02/28/staying-ahead-of-threat-actors-in-the-age-of-ai/" target="_blank" rel="noopener">Microsoft Security Blog — Midnight Blizzard device code phishing campaigns (2025)</a></li>
+        <li><a href="https://www.microsoft.com/en-us/security/blog/2024/01/25/midnight-blizzard-guidance-for-responders-on-nation-state-attack/" target="_blank" rel="noopener">Microsoft MSRC — Midnight Blizzard response guidance</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-flows" target="_blank" rel="noopener">Microsoft Learn — Conditional Access Authentication Flows</a></li>
+        <li><a href="https://datatracker.ietf.org/doc/html/rfc8628" target="_blank" rel="noopener">RFC 8628 — OAuth 2.0 Device Authorization Grant</a></li>
+        <li><a href="https://attack.mitre.org/techniques/T1528/" target="_blank" rel="noopener">MITRE ATT&amp;CK — T1528: Steal Application Access Token</a></li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="../index.html">All Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/main.js"></script>
+</body>
+</html>
