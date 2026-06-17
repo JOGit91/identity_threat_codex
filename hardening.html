@@ -4,22 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hardening Matrix &mdash; M365 Identity Threat Codex</title>
-  <meta name="description" content="See which Microsoft 365 hardening controls protect you across the most attacks. Prioritize your defensive investments with cross-attack coverage scoring.">
+  <meta name="description" content="Hardening controls grouped by cross-attack coverage. Know exactly where to start for the most defensive bang for your buck across all documented M365 attacks.">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
   <style>
-    /* ── Page-specific styles ───────────────────────────────── */
-
-    .hardening-hero {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 52px 24px 44px;
-    }
-
-    .hardening-hero-inner {
-      max-width: 900px;
+    .page-inner {
+      max-width: 960px;
       margin: 0 auto;
+      padding: 48px 24px 80px;
     }
+
+    .page-header { margin-bottom: 48px; }
 
     .page-eyebrow {
       font-size: 11px;
@@ -27,352 +22,183 @@
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--accent);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      margin-bottom: 10px;
     }
 
-    .hardening-hero h1 {
-      font-size: clamp(24px, 4vw, 36px);
+    .page-header h1 {
+      font-size: clamp(22px, 4vw, 32px);
       font-weight: 800;
       letter-spacing: -0.03em;
       color: var(--text);
-      margin-bottom: 14px;
-      line-height: 1.2;
+      margin-bottom: 10px;
     }
 
-    .hardening-hero p {
-      font-size: 16px;
+    .page-header p {
+      font-size: 15px;
       color: var(--text-muted);
-      line-height: 1.7;
-      max-width: 680px;
-      margin-bottom: 28px;
+      line-height: 1.65;
+      max-width: 620px;
     }
 
-    /* Legend */
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px 16px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
+    /* Tier sections */
+    .tier {
+      margin-bottom: 40px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
     }
 
-    .legend-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-subtle);
-      margin-right: 4px;
-    }
-
-    .legend-item {
+    .tier-header {
+      padding: 18px 24px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 500;
+      gap: 16px;
     }
 
-    .legend-swatch {
-      width: 28px;
-      height: 18px;
-      border-radius: 4px;
-      border: 1px solid;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      font-weight: 700;
-    }
+    .tier-1 .tier-header { background: #fef2f2; border-bottom: 1px solid var(--critical-border); }
+    .tier-2 .tier-header { background: #fff7ed; border-bottom: 1px solid var(--high-border); }
+    .tier-3 .tier-header { background: #fffbeb; border-bottom: 1px solid #fcd34d; }
 
-    .sw-critical { background: var(--critical-bg); border-color: var(--critical-border); color: var(--critical); }
-    .sw-high     { background: var(--high-bg);     border-color: var(--high-border);     color: var(--high); }
-    .sw-partial  { background: #fffbeb;             border-color: #fcd34d;                color: var(--medium); }
-    .sw-none     { background: var(--surface-alt);  border-color: var(--border);          color: var(--text-subtle); }
-
-    /* Top picks */
-    .top-picks {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 32px 24px 0;
-    }
-
-    .top-picks-label {
+    .tier-badge {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--text-subtle);
-      margin-bottom: 14px;
-    }
-
-    .top-picks-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .top-pick-card {
-      background: var(--surface);
-      border: 1px solid var(--critical-border);
-      border-left: 3px solid var(--critical);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .top-pick-score {
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--critical);
-      letter-spacing: -0.04em;
-      line-height: 1;
-      min-width: 28px;
-      text-align: center;
-      margin-top: 2px;
-    }
-
-    .top-pick-score span {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-subtle);
-      display: block;
-      text-align: center;
-    }
-
-    .top-pick-body {}
-    .top-pick-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.3; }
-    .top-pick-cat  { font-size: 11px; color: var(--text-subtle); }
-
-    /* Matrix section */
-    .matrix-section {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 32px 24px 80px;
-    }
-
-    .matrix-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .matrix-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .matrix-filters {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    /* The matrix table */
-    .matrix-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-
-    table.heatmap {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    .heatmap th {
-      background: var(--surface-alt);
-      padding: 10px 14px;
-      text-align: left;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 5px;
       white-space: nowrap;
     }
+    .tier-1 .tier-badge { background: var(--critical); color: white; }
+    .tier-2 .tier-badge { background: var(--high); color: white; }
+    .tier-3 .tier-badge { background: var(--medium); color: white; }
 
-    .heatmap th.col-attack {
-      text-align: center;
-      min-width: 130px;
-      max-width: 160px;
+    .tier-header-text h2 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2px;
+    }
+    .tier-1 .tier-header-text h2 { color: var(--critical); }
+    .tier-2 .tier-header-text h2 { color: var(--high); }
+    .tier-3 .tier-header-text h2 { color: var(--medium); }
+
+    .tier-header-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1;
     }
 
-    .heatmap th.col-score {
-      text-align: center;
-      min-width: 110px;
-    }
-
-    /* Category header row */
-    .heatmap tr.category-row td {
-      background: var(--surface-alt);
-      border-top: 2px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 6px 14px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
+    .tier-count {
+      margin-left: auto;
+      font-size: 13px;
+      font-weight: 600;
       color: var(--text-subtle);
     }
 
-    /* Data rows */
-    .heatmap tr.control-row td {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
+    /* Control rows inside tier */
+    .tier-controls {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
     }
 
-    .heatmap tr.control-row:last-child td { border-bottom: none; }
-    .heatmap tr.control-row:hover td { background: #fafbfc; }
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .control-row:last-child { border-bottom: none; }
+    .control-row:hover { background: var(--surface-alt); }
 
-    .heatmap tr.control-row[data-filtered="true"] { display: none; }
+    .control-info { flex: 1; min-width: 0; }
 
-    /* Priority badge cell */
-    .cell-priority { width: 52px; }
-
-    /* Control name cell */
     .control-name {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--text);
+      margin-bottom: 3px;
       line-height: 1.35;
     }
 
-    /* Attack coverage cell */
-    .heatmap td.cell-attack {
-      text-align: center;
-      padding: 8px 10px;
+    .control-category {
+      font-size: 11px;
+      color: var(--text-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 500;
     }
 
-    .coverage-pill {
-      display: inline-flex;
+    /* Per-attack coverage pills */
+    .coverage-row {
+      display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .atk-coverage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .atk-name {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-subtle);
+      white-space: nowrap;
+    }
+
+    .cov-pill {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 4px 8px;
-      border-radius: 5px;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 4px;
       border: 1px solid;
       white-space: nowrap;
-      min-width: 60px;
     }
-
     .cov-3 { background: var(--critical-bg); color: var(--critical); border-color: var(--critical-border); }
     .cov-2 { background: var(--high-bg);     color: var(--high);     border-color: var(--high-border); }
     .cov-1 { background: #fffbeb;            color: var(--medium);   border-color: #fcd34d; }
     .cov-0 { background: var(--surface-alt); color: var(--text-subtle); border-color: var(--border); }
 
-    /* Score cell */
-    .heatmap td.cell-score {
+    /* Score */
+    .score-col {
       text-align: center;
-      padding: 8px 14px;
-      min-width: 110px;
+      min-width: 56px;
+      flex-shrink: 0;
     }
-
-    .score-display {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
+    .score-num {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
     }
-
-    .score-fraction {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.02em;
-    }
-
-    .score-fraction .denom {
-      font-weight: 400;
+    .tier-1 .score-num { color: var(--critical); }
+    .tier-2 .score-num { color: var(--high); }
+    .tier-3 .score-num { color: var(--medium); }
+    .score-denom {
+      font-size: 11px;
       color: var(--text-subtle);
-    }
-
-    .score-bar {
-      width: 80px;
-      height: 5px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .score-bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      background: var(--critical);
-      transition: width 0.4s ease;
-    }
-
-    .score-bar-fill.fill-high   { background: var(--high); }
-    .score-bar-fill.fill-medium { background: var(--medium); }
-    .score-bar-fill.fill-low    { background: var(--text-subtle); }
-
-    /* Tooltip */
-    .tip-cell {
-      position: relative;
-    }
-
-    .tip-cell .tip-text {
-      display: none;
-      position: absolute;
-      z-index: 200;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--text);
-      color: #f1f5f9;
-      font-size: 12px;
-      line-height: 1.5;
-      padding: 8px 12px;
-      border-radius: 6px;
-      width: 220px;
-      text-align: left;
       font-weight: 400;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      pointer-events: none;
-      letter-spacing: 0;
-      text-transform: none;
     }
 
-    .tip-cell .tip-text::after {
-      content: '';
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 5px solid transparent;
-      border-top-color: var(--text);
-    }
-
-    .tip-cell:hover .tip-text { display: block; }
+    .priority-col { flex-shrink: 0; }
 
     @media (max-width: 640px) {
-      .top-picks-grid { grid-template-columns: 1fr; }
+      .coverage-row { display: none; }
     }
   </style>
 </head>
 <body>
 
-<!-- ── NAV ──────────────────────────────────────────────────── -->
 <nav class="site-nav">
   <div class="nav-inner">
     <a class="site-brand" href="index.html">
@@ -396,75 +222,22 @@
   </div>
 </nav>
 
-<!-- ── HERO ─────────────────────────────────────────────────── -->
-<section class="hardening-hero">
-  <div class="hardening-hero-inner">
-    <div class="page-eyebrow">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/><polyline points="9 12 11 14 15 10"/></svg>
-      Hardening Priority Matrix
-    </div>
-    <h1>Which controls protect you across the most attacks?</h1>
+<div class="page-inner">
+  <div class="page-header">
+    <div class="page-eyebrow">Hardening Priority Matrix</div>
+    <h1>Where should you start?</h1>
     <p>
-      Many hardening measures appear in the prevention section of multiple attacks. This matrix maps every documented control against every documented attack so you can see &mdash; at a glance &mdash; which investments give you the broadest defensive coverage. Start with the controls at the top.
+      Every hardening control across all documented attacks, grouped by cross-attack coverage.
+      Start at the top &mdash; these controls give you the most protection across the most attacks.
+      As new attacks are added to this codex, the tiers update automatically.
     </p>
-    <div class="legend">
-      <span class="legend-label">Coverage:</span>
-      <span class="legend-item"><span class="legend-swatch sw-critical">3</span> Critical &mdash; directly prevents or fully disrupts this attack</span>
-      <span class="legend-item"><span class="legend-swatch sw-high">2</span> High &mdash; significantly impairs this attack path</span>
-      <span class="legend-item"><span class="legend-swatch sw-partial">1</span> Partial &mdash; reduces effectiveness or limits follow-on</span>
-      <span class="legend-item"><span class="legend-swatch sw-none">&mdash;</span> None &mdash; no meaningful protection against this attack</span>
-    </div>
   </div>
-</section>
 
-<!-- ── LAYOUT DEMOS BANNER ────────────────────────────────────── -->
-<div style="background:#fffbeb;border-bottom:1px solid #fcd34d;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-  <span style="font-size:12px;font-weight:700;color:var(--medium);text-transform:uppercase;letter-spacing:0.08em;">Preview alternate layouts:</span>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <a href="hardening-tiers.html" style="font-size:13px;font-weight:600;color:var(--link);background:white;border:1px solid #bfdbfe;padding:5px 14px;border-radius:6px;text-decoration:none;">A — Priority Tiers</a>
-    <a href="hardening-cards.html" style="font-size:13px;font-weight:600;color:var(--link);background:white;border:1px solid #bfdbfe;padding:5px 14px;border-radius:6px;text-decoration:none;">B — Ranked Cards</a>
-    <a href="hardening-scoreboard.html" style="font-size:13px;font-weight:600;color:var(--link);background:white;border:1px solid #bfdbfe;padding:5px 14px;border-radius:6px;text-decoration:none;">C — Scoreboard</a>
+  <div id="tiers-container">
+    <!-- rendered by JS -->
   </div>
 </div>
 
-<!-- ── TOP PICKS ─────────────────────────────────────────────── -->
-<div class="top-picks">
-  <div class="top-picks-label">Highest cross-attack coverage &mdash; start here</div>
-  <div class="top-picks-grid" id="top-picks-grid">
-    <!-- populated by JS -->
-  </div>
-</div>
-
-<!-- ── MATRIX ────────────────────────────────────────────────── -->
-<div class="matrix-section">
-  <div class="matrix-toolbar">
-    <span class="matrix-title">Full Control Matrix</span>
-    <div class="matrix-filters">
-      <span class="chip active" data-filter="all">All</span>
-      <span class="chip" data-filter="P1">P1 Priority</span>
-      <span class="chip" data-filter="P2">P2 Priority</span>
-      <span class="chip" data-filter="P3">P3 Priority</span>
-    </div>
-  </div>
-
-  <div class="matrix-wrap">
-    <table class="heatmap" id="heatmap-table">
-      <thead>
-        <tr id="heatmap-head">
-          <th style="width:52px">Priority</th>
-          <th>Hardening Control</th>
-          <!-- attack columns injected by JS -->
-          <th class="col-score">Coverage</th>
-        </tr>
-      </thead>
-      <tbody id="heatmap-body">
-        <!-- rows injected by JS -->
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ── FOOTER ────────────────────────────────────────────────── -->
 <footer class="site-footer">
   <div class="footer-inner">
     <div>
@@ -478,442 +251,92 @@
   </div>
 </footer>
 
+<script src="assets/hardening-data.js"></script>
 <script>
-/* ── Hardening data ───────────────────────────────────────────
-   To add a new attack:
-     1. Add an entry to ATTACKS
-     2. Add coverage scores for the new attack id in every control's `coverage` object
-   To add a new control:
-     1. Add an entry to CONTROLS with coverage scores for all attack ids
-   Coverage scale: 0 = none, 1 = partial, 2 = high, 3 = critical
-─────────────────────────────────────────────────────────────── */
+function coverageLabel(s) {
+  return ["—", "Partial", "High", "Critical"][s] || "—";
+}
+function coverageClass(s) {
+  return ["cov-0", "cov-1", "cov-2", "cov-3"][s] || "cov-0";
+}
 
-const ATTACKS = [
+const tiers = [
   {
-    id: "session-token-theft",
-    name: "Session Token Theft",
-    short: "Token Theft",
-    url: "attacks/session-token-theft.html",
+    key: "start",
+    cssClass: "tier-1",
+    badge: "Start Here",
+    title: "Highest Impact — Do These First",
+    desc: "These controls protect you across the most attacks in this codex. If you prioritize nothing else, prioritize these.",
+    test: pct => pct >= 0.67,
   },
   {
-    id: "ms-teams-impersonation",
-    name: "MS Teams Impersonation",
-    short: "Teams Impersonation",
-    url: "attacks/ms-teams-impersonation.html",
+    key: "next",
+    cssClass: "tier-2",
+    badge: "Do Next",
+    title: "Strong Additional Coverage",
+    desc: "Solid protection with cross-attack benefit. Implement after the Start Here controls are in place.",
+    test: pct => pct >= 0.34 && pct < 0.67,
+  },
+  {
+    key: "targeted",
+    cssClass: "tier-3",
+    badge: "Targeted",
+    title: "Attack-Specific Hardening",
+    desc: "Protects strongly against specific attacks. Essential, but narrower in scope than the tiers above.",
+    test: pct => pct < 0.34,
   },
 ];
 
-const CONTROLS = [
-  // ── Identity & Authentication ────────────────────────────
-  {
-    id: "fido2",
-    name: "Phishing-Resistant MFA (FIDO2 / Windows Hello for Business)",
-    category: "Identity & Authentication",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    3,
-      "ms-teams-impersonation": 2,
-    },
-    why: {
-      "session-token-theft":    "FIDO2 credentials are origin-bound — an AiTM proxy cannot capture or replay them. This is the only MFA type that prevents token theft at the authentication layer.",
-      "ms-teams-impersonation": "If a victim clicks a phishing link from Teams, FIDO2 prevents credential compromise because the phishing domain won't match the registered origin.",
-    },
-  },
-  {
-    id: "number-matching",
-    name: "Number Matching & Additional Context for MFA Push",
-    category: "Identity & Authentication",
-    priority: "P2",
-    coverage: {
-      "session-token-theft":    1,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "Reduces push bombing in related campaigns; doesn't stop token theft once a session exists but limits MFA fatigue abuse.",
-      "ms-teams-impersonation": "Directly stops MFA push bombing — victims must enter a matching code rather than simply approving a push. Also shows the requesting app and location.",
-    },
-  },
-  {
-    id: "restrict-mfa-reg",
-    name: "Restrict MFA Method Registration (Require Compliant Device)",
-    category: "Identity & Authentication",
-    priority: "P2",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 1,
-    },
-    why: {
-      "session-token-theft":    "Prevents attackers who steal a session token from registering new authenticators to persist through a password reset.",
-      "ms-teams-impersonation": "Limits persistence options after a successful Teams-based account takeover.",
-    },
-  },
-  {
-    id: "block-legacy-auth",
-    name: "Block Legacy Authentication Protocols",
-    category: "Identity & Authentication",
-    priority: "P3",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 0,
-    },
-    why: {
-      "session-token-theft":    "Legacy protocols (IMAP, POP3, SMTP AUTH) bypass Conditional Access and MFA, enabling token-independent credential access that supplements token theft campaigns.",
-      "ms-teams-impersonation": "Not directly relevant to Teams-based attack chains.",
-    },
-  },
+const container = document.getElementById("tiers-container");
 
-  // ── Conditional Access ───────────────────────────────────
-  {
-    id: "token-protection",
-    name: "Conditional Access Token Protection (Token Binding)",
-    category: "Conditional Access",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    3,
-      "ms-teams-impersonation": 1,
-    },
-    why: {
-      "session-token-theft":    "Directly stops token replay — binds access tokens to the originating device so a stolen token fails when replayed from an attacker's machine.",
-      "ms-teams-impersonation": "Provides post-compromise protection if account takeover occurs following a Teams phishing attack.",
-    },
-  },
-  {
-    id: "cae",
-    name: "Continuous Access Evaluation (CAE)",
-    category: "Conditional Access",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    3,
-      "ms-teams-impersonation": 1,
-    },
-    why: {
-      "session-token-theft":    "Revokes stolen tokens in near-real-time when a password reset or policy violation occurs — dramatically reducing the window a stolen token is useful.",
-      "ms-teams-impersonation": "Limits the time window an attacker has after gaining access via a Teams phishing chain.",
-    },
-  },
-  {
-    id: "signin-risk-ca",
-    name: "Sign-in Risk Conditional Access Policies",
-    category: "Conditional Access",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    3,
-      "ms-teams-impersonation": 2,
-    },
-    why: {
-      "session-token-theft":    "Blocks or requires step-up authentication when Entra ID Protection detects Anomalous Token, Impossible Travel, or High risk — the primary enforcement layer for detected token theft.",
-      "ms-teams-impersonation": "Catches and blocks high-risk sign-ins that follow a successful Teams phishing chain.",
-    },
-  },
-  {
-    id: "compliant-device",
-    name: "Require Compliant / Hybrid-Joined Device for Sensitive Apps",
-    category: "Conditional Access",
-    priority: "P3",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 1,
-    },
-    why: {
-      "session-token-theft":    "Makes token replay from unmanaged attacker devices fail — stolen tokens can't authenticate to apps requiring device compliance.",
-      "ms-teams-impersonation": "Limits post-compromise lateral movement by requiring managed devices for sensitive application access.",
-    },
-  },
-  {
-    id: "token-lifetime",
-    name: "Reduce Token Lifetimes / Sign-in Frequency",
-    category: "Conditional Access",
-    priority: "P2",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 0,
-    },
-    why: {
-      "session-token-theft":    "Shorter token lifetimes reduce the window a stolen token is useful. Disabling persistent browser sessions also limits cookie theft viability.",
-      "ms-teams-impersonation": "Not directly relevant to Teams-based initial access chains.",
-    },
-  },
+tiers.forEach(tier => {
+  const controls = SORTED_CONTROLS.filter(c => tier.test(totalScore(c) / MAX_SCORE));
+  if (!controls.length) return;
 
-  // ── Entra ID Protection ──────────────────────────────────
-  {
-    id: "eid-protection",
-    name: "Entra ID Protection (Anomalous Token Detection)",
-    category: "Entra ID Protection",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    3,
-      "ms-teams-impersonation": 2,
-    },
-    why: {
-      "session-token-theft":    "The Anomalous Token risk event is the highest-fidelity real-time signal for token theft. Requires P2 license but provides critical detection capabilities unavailable elsewhere.",
-      "ms-teams-impersonation": "Detects anomalous sign-in patterns that follow a successful Teams phishing chain — unusual location, device, or token properties after credential theft.",
-    },
-  },
+  const section = document.createElement("div");
+  section.className = `tier ${tier.cssClass}`;
+  section.innerHTML = `
+    <div class="tier-header">
+      <span class="tier-badge">${tier.badge}</span>
+      <div class="tier-header-text">
+        <h2>${tier.title}</h2>
+        <p>${tier.desc}</p>
+      </div>
+      <span class="tier-count">${controls.length} control${controls.length !== 1 ? "s" : ""}</span>
+    </div>
+    <div class="tier-controls" id="tier-${tier.key}"></div>
+  `;
+  container.appendChild(section);
 
-  // ── Microsoft Teams Hardening ────────────────────────────
-  {
-    id: "restrict-external-teams",
-    name: "Restrict External Teams Access (Allowlist Only)",
-    category: "Microsoft Teams Hardening",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    0,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "Not directly related to token theft attack chain.",
-      "ms-teams-impersonation": "The single highest-impact control: prevents any external Microsoft 365 tenant from cold-contacting your users. Eliminates the primary delivery vector for external Teams impersonation attacks.",
-    },
-  },
-  {
-    id: "safe-links-teams",
-    name: "Safe Links for Microsoft Teams (MDO P1)",
-    category: "Microsoft Teams Hardening",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    0,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "Not directly related to token theft attack chain.",
-      "ms-teams-impersonation": "Inspects and blocks malicious URLs sent in Teams messages — the primary link-based delivery mechanism — before the victim can click them.",
-    },
-  },
-  {
-    id: "block-guest-files",
-    name: "Block File Downloads from External/Guest Users in Teams",
-    category: "Microsoft Teams Hardening",
-    priority: "P2",
-    coverage: {
-      "session-token-theft":    0,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "Not directly related to token theft attack chain.",
-      "ms-teams-impersonation": "Closes the malware delivery vector used by Storm-0324 and similar actors who distribute malicious executables and scripts via Teams file shares.",
-    },
-  },
-  {
-    id: "remove-quickassist",
-    name: "Remove / Restrict Microsoft QuickAssist",
-    category: "Microsoft Teams Hardening",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    0,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "Not directly related to token theft attack chain.",
-      "ms-teams-impersonation": "Directly blocks a documented attack chain — Black Basta and Scattered Spider affiliates use QuickAssist during Teams vishing calls to gain remote access to victim devices.",
-    },
-  },
-  {
-    id: "restrict-teams-apps",
-    name: "Restrict App Permissions in Teams (Allowlist Apps)",
-    category: "Microsoft Teams Hardening",
-    priority: "P3",
-    coverage: {
-      "session-token-theft":    1,
-      "ms-teams-impersonation": 1,
-    },
-    why: {
-      "session-token-theft":    "Malicious OAuth apps consented via Teams can provide persistent token-based access that survives password resets.",
-      "ms-teams-impersonation": "Prevents attackers from installing malicious Teams apps that could be used as a foothold or data exfiltration channel.",
-    },
-  },
-
-  // ── Detection & Response ─────────────────────────────────
-  {
-    id: "inbox-rule-alerts",
-    name: "Alert on Suspicious Inbox Rules (New-InboxRule)",
-    category: "Detection & Response",
-    priority: "P2",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 2,
-    },
-    why: {
-      "session-token-theft":    "Creating forwarding/deletion inbox rules is the first post-compromise action attackers take after token theft. Alerting on this catches intrusions early and limits damage.",
-      "ms-teams-impersonation": "Also the first post-compromise action following account takeover via Teams phishing — allows rapid detection and response before BEC fraud occurs.",
-    },
-  },
-  {
-    id: "mdca-policies",
-    name: "Defender for Cloud Apps Activity Policies",
-    category: "Detection & Response",
-    priority: "P2",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "MDCA detects mass download activity, impossible travel, and anomalous session patterns that indicate an active token theft intrusion.",
-      "ms-teams-impersonation": "Provides the richest Teams-specific telemetry — detects external tenants messaging multiple users, guest file shares, and unusual Teams activity patterns.",
-    },
-  },
-
-  // ── Human Layer ──────────────────────────────────────────
-  {
-    id: "awareness-training",
-    name: "Security Awareness Training (Teams & MFA-Specific)",
-    category: "Human Layer",
-    priority: "P1",
-    coverage: {
-      "session-token-theft":    2,
-      "ms-teams-impersonation": 3,
-    },
-    why: {
-      "session-token-theft":    "Users who recognize AiTM phishing patterns — identical-looking login pages, unexpected redirects, urgency — are less likely to complete the credential submission that enables token theft.",
-      "ms-teams-impersonation": "The primary defense against vishing and social engineering. Train employees: IT will never call via Teams to ask for MFA approval; external Teams senders are not internal; urgency is a red flag.",
-    },
-  },
-];
-
-/* ── Render ───────────────────────────────────────────────── */
-
-const MAX_SCORE = ATTACKS.length * 3;
-
-function coverageLabel(score) {
-  if (score === 3) return "Critical";
-  if (score === 2) return "High";
-  if (score === 1) return "Partial";
-  return "&mdash;";
-}
-
-function coverageClass(score) {
-  return ["cov-0","cov-1","cov-2","cov-3"][score] || "cov-0";
-}
-
-function totalScore(control) {
-  return ATTACKS.reduce((sum, a) => sum + (control.coverage[a.id] || 0), 0);
-}
-
-// Inject attack columns into thead
-const head = document.getElementById("heatmap-head");
-ATTACKS.forEach(atk => {
-  const th = document.createElement("th");
-  th.className = "col-attack";
-  th.innerHTML = `<a href="${atk.url}" style="color:inherit;text-decoration:none;">${atk.short}</a>`;
-  head.insertBefore(th, head.lastElementChild); // before "Coverage"
-});
-
-// Sort controls by total score desc
-const sorted = [...CONTROLS].sort((a, b) => totalScore(b) - totalScore(a));
-
-// Group by category, preserve score order within groups
-const categories = [];
-const seen = {};
-sorted.forEach(c => {
-  if (!seen[c.category]) {
-    seen[c.category] = true;
-    categories.push(c.category);
-  }
-});
-
-// Build rows
-const tbody = document.getElementById("heatmap-body");
-
-categories.forEach(cat => {
-  // Category header
-  const catRow = document.createElement("tr");
-  catRow.className = "category-row";
-  const catTd = document.createElement("td");
-  catTd.colSpan = 2 + ATTACKS.length + 1;
-  catTd.textContent = cat;
-  catRow.appendChild(catTd);
-  tbody.appendChild(catRow);
-
-  // Controls in this category (already sorted by score)
-  sorted.filter(c => c.category === cat).forEach(control => {
-    const score = totalScore(control);
-    const pct = Math.round((score / MAX_SCORE) * 100);
-
-    let fillClass = "fill-low";
-    if (pct >= 70) fillClass = "";         // red (default)
-    else if (pct >= 45) fillClass = "fill-high";
-    else if (pct >= 20) fillClass = "fill-medium";
-
-    const tr = document.createElement("tr");
-    tr.className = "control-row";
-    tr.dataset.priority = control.priority;
-
-    // Priority
-    const tdPriority = document.createElement("td");
-    tdPriority.className = "cell-priority";
-    tdPriority.innerHTML = `<span class="prev-priority ${control.priority.toLowerCase()}">${control.priority}</span>`;
-    tr.appendChild(tdPriority);
-
-    // Control name
-    const tdName = document.createElement("td");
-    tdName.innerHTML = `<div class="control-name">${control.name}</div>`;
-    tr.appendChild(tdName);
-
-    // Attack coverage cells
-    ATTACKS.forEach(atk => {
-      const s = control.coverage[atk.id] || 0;
-      const why = (control.why && control.why[atk.id]) || "";
-      const td = document.createElement("td");
-      td.className = "cell-attack tip-cell";
-      td.innerHTML = `
-        <span class="coverage-pill ${coverageClass(s)}">${coverageLabel(s)}</span>
-        ${why ? `<span class="tip-text">${why}</span>` : ""}
-      `;
-      tr.appendChild(td);
-    });
-
-    // Score
-    const tdScore = document.createElement("td");
-    tdScore.className = "cell-score";
-    tdScore.innerHTML = `
-      <div class="score-display">
-        <span class="score-fraction">${score}<span class="denom"> / ${MAX_SCORE}</span></span>
-        <div class="score-bar">
-          <div class="score-bar-fill ${fillClass}" style="width:${pct}%"></div>
-        </div>
+  const body = document.getElementById(`tier-${tier.key}`);
+  controls.forEach(c => {
+    const score = totalScore(c);
+    const row = document.createElement("div");
+    row.className = "control-row";
+    row.innerHTML = `
+      <div class="priority-col">
+        <span class="prev-priority ${c.priority.toLowerCase()}">${c.priority}</span>
+      </div>
+      <div class="control-info">
+        <div class="control-name">${c.name}</div>
+        <div class="control-category">${c.category}</div>
+      </div>
+      <div class="coverage-row">
+        ${ATTACKS.map(a => `
+          <div class="atk-coverage">
+            <span class="atk-name">${a.short}</span>
+            <span class="cov-pill ${coverageClass(c.coverage[a.id] || 0)}">${coverageLabel(c.coverage[a.id] || 0)}</span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="score-col">
+        <div class="score-num">${score}</div>
+        <div class="score-denom">/${MAX_SCORE}</div>
       </div>
     `;
-    tr.appendChild(tdScore);
-
-    tbody.appendChild(tr);
-  });
-});
-
-// Top picks: controls with score >= 70% of max
-const topPicks = sorted.filter(c => totalScore(c) / MAX_SCORE >= 0.70).slice(0, 6);
-const topGrid = document.getElementById("top-picks-grid");
-topPicks.forEach(c => {
-  const score = totalScore(c);
-  const div = document.createElement("div");
-  div.className = "top-pick-card";
-  div.innerHTML = `
-    <div class="top-pick-score">${score}<span>/${MAX_SCORE}</span></div>
-    <div class="top-pick-body">
-      <div class="top-pick-name">${c.name}</div>
-      <div class="top-pick-cat">${c.category}</div>
-    </div>
-  `;
-  topGrid.appendChild(div);
-});
-
-// Priority filter chips
-document.querySelectorAll('.chip[data-filter]').forEach(chip => {
-  chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    const filter = chip.dataset.filter;
-    document.querySelectorAll('.control-row').forEach(row => {
-      if (filter === 'all' || row.dataset.priority === filter) {
-        row.dataset.filtered = 'false';
-        row.style.display = '';
-      } else {
-        row.dataset.filtered = 'true';
-        row.style.display = 'none';
-      }
-    });
+    body.appendChild(row);
   });
 });
 </script>
-
-<script src="assets/main.js"></script>
 </body>
 </html>
