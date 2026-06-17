@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Implementation Plan &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="Customized M365 hardening implementation plan — M365 Identity Threat Codex">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+  <style>
+    .plan-page {
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Plan header ─────────────── */
+    .plan-header {
+      margin-bottom: 40px;
+      padding-bottom: 32px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .plan-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .plan-header h1 {
+      font-size: clamp(20px, 4vw, 28px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .plan-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--text-subtle);
+      margin-top: 12px;
+    }
+
+    .plan-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .plan-meta-item strong { color: var(--text); }
+
+    /* ── Action bar (no-print) ────── */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .btn-print {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-print:hover { opacity: 0.88; }
+
+    .btn-back {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .btn-back:hover { color: var(--accent); }
+
+    /* ── Summary stats ────────────── */
+    .plan-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    .summary-stat {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .summary-stat-num {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .summary-stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 600;
+      color: var(--text-subtle);
+    }
+
+    .stat-green  { color: #16a34a; }
+    .stat-orange { color: var(--high); }
+    .stat-slate  { color: #475569; }
+    .stat-accent { color: var(--accent); }
+
+    /* ── Phase sections ─────────────── */
+    .phase {
+      margin-bottom: 48px;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding: 16px 20px;
+      border-radius: 8px;
+    }
+
+    .phase-easy   { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .phase-medium { background: #fff7ed; border: 1px solid var(--high-border); }
+    .phase-hard   { background: #f8fafc; border: 1px solid #cbd5e1; }
+
+    .phase-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      border-radius: 5px;
+      white-space: nowrap;
+      color: white;
+    }
+    .phase-easy .phase-badge   { background: #16a34a; }
+    .phase-medium .phase-badge { background: var(--high); }
+    .phase-hard .phase-badge   { background: #475569; }
+
+    .phase-header-text { flex: 1; }
+    .phase-header-text h2 {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+    .phase-easy .phase-header-text h2   { color: #15803d; }
+    .phase-medium .phase-header-text h2 { color: var(--high); }
+    .phase-hard .phase-header-text h2   { color: #475569; }
+
+    .phase-header-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+
+    /* ── Control entries ─────────────── */
+    .control-entry {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .control-entry-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .control-entry-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .control-entry-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .score-chip {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 8px;
+    }
+
+    .control-entry-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 640px) {
+      .control-entry-body { grid-template-columns: 1fr; }
+    }
+
+    .entry-col {
+      padding: 14px 18px;
+    }
+    .entry-col:first-child {
+      border-right: 1px solid var(--border);
+    }
+    @media (max-width: 640px) {
+      .entry-col:first-child {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    .entry-col-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-subtle);
+      margin-bottom: 8px;
+    }
+
+    .entry-col-steps ol {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .entry-col-steps li {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 4px;
+    }
+    .entry-col-steps li:last-child { margin-bottom: 0; }
+
+    .coverage-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .cov-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .cov-item-name { font-size: 12px; color: var(--text-muted); }
+
+    .cov-pill {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .cov-3 { background: var(--critical-bg); color: var(--critical); border-color: var(--critical-border); }
+    .cov-2 { background: var(--high-bg);     color: var(--high);     border-color: var(--high-border); }
+    .cov-1 { background: #fffbeb;            color: var(--medium);   border-color: #fcd34d; }
+    .cov-0 { background: var(--surface-alt); color: var(--text-subtle); border-color: var(--border); }
+
+    .license-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-top: 8px;
+      padding: 8px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 5px;
+    }
+    .license-note strong { color: #1d4ed8; }
+
+    /* ── Empty state ─────────────────── */
+    .plan-empty {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+    .plan-empty h2 { font-size: 18px; color: var(--text); margin-bottom: 12px; }
+
+    /* ── Print styles ─────────────────── */
+    @media print {
+      .site-nav, .action-bar, .site-footer, .no-print { display: none !important; }
+      .plan-page { padding: 0; max-width: 100%; }
+      .control-entry { break-inside: avoid; }
+      .phase { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav no-print">
+  <div class="nav-inner">
+    <a class="site-brand" href="index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="index.html">Attacks</a>
+      <a href="hardening.html">Hardening Matrix</a>
+      <a href="index.html#about">About</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">For Defenders</span>
+    </div>
+  </div>
+</nav>
+
+<div class="plan-page" id="plan-output">
+  <!-- rendered by JS -->
+</div>
+
+<footer class="site-footer no-print">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="hardening.html">Hardening Matrix</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/hardening-data.js"></script>
+<script>
+// ── Helpers ──────────────────────────────────────────────
+function coverageLabel(s) { return ["—","Partial","High","Critical"][s] || "—"; }
+function coverageClass(s) { return ["cov-0","cov-1","cov-2","cov-3"][s] || "cov-0"; }
+
+function complexityLabel(n) { return ["","Low","Medium","High"][n] || ""; }
+
+function formatDate() {
+  const d = new Date();
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+// ── Parse selected control IDs from URL ──────────────────
+const params = new URLSearchParams(window.location.search);
+const rawIds = params.get("controls") || "";
+const selectedIds = rawIds.split(",").map(s => s.trim()).filter(Boolean);
+const selectedControls = selectedIds
+  .map(id => CONTROLS.find(c => c.id === id))
+  .filter(Boolean);
+
+const mount = document.getElementById("plan-output");
+
+if (!selectedControls.length) {
+  mount.innerHTML = `
+    <div class="plan-empty">
+      <h2>No Controls Selected</h2>
+      <p>Select controls from the Hardening Matrix to build your implementation plan.</p>
+      <a href="hardening.html" style="color:var(--accent);font-weight:600;">← Go to Hardening Matrix</a>
+    </div>
+  `;
+} else {
+  const easy   = selectedControls.filter(c => c.complexity === 1);
+  const medium = selectedControls.filter(c => c.complexity === 2);
+  const hard   = selectedControls.filter(c => c.complexity === 3);
+  const totalImpact = selectedControls.reduce((s, c) => s + totalScore(c), 0);
+
+  function renderControl(c) {
+    const score = totalScore(c);
+    return `
+      <div class="control-entry">
+        <div class="control-entry-header">
+          <div class="control-entry-title">${c.name}</div>
+          <div class="control-entry-meta">
+            <span class="score-chip">Impact ${score}/${MAX_SCORE}</span>
+            <span class="prev-priority ${c.priority.toLowerCase()}">${c.priority}</span>
+          </div>
+        </div>
+        <div class="control-entry-body">
+          <div class="entry-col">
+            <div class="entry-col-label">Attack Coverage</div>
+            <div class="coverage-summary">
+              ${ATTACKS.map(a => {
+                const cov = c.coverage[a.id] || 0;
+                return `
+                  <div class="cov-item">
+                    <span class="cov-item-name">${a.name}</span>
+                    <span class="cov-pill ${coverageClass(cov)}">${coverageLabel(cov)}</span>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+            <div class="license-note"><strong>Licensing:</strong> ${c.licenseNote}</div>
+          </div>
+          <div class="entry-col">
+            <div class="entry-col-label">Implementation Steps</div>
+            <div class="entry-col-steps">
+              <ol>
+                ${(c.implementationPlan || []).map(s => `<li>${s}</li>`).join("")}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPhase(controls, phaseClass, badge, title, desc) {
+    if (!controls.length) return "";
+    return `
+      <div class="phase">
+        <div class="phase-header ${phaseClass}">
+          <span class="phase-badge">${badge}</span>
+          <div class="phase-header-text">
+            <h2>${title}</h2>
+            <p>${desc}</p>
+          </div>
+        </div>
+        ${controls.map(renderControl).join("")}
+      </div>
+    `;
+  }
+
+  mount.innerHTML = `
+    <div class="plan-header">
+      <div class="plan-eyebrow">Implementation Plan · M365 Identity Threat Codex</div>
+      <h1>M365 Hardening Implementation Plan</h1>
+      <div class="plan-meta">
+        <div class="plan-meta-item">Generated: <strong>${formatDate()}</strong></div>
+        <div class="plan-meta-item">&middot;</div>
+        <div class="plan-meta-item">Controls: <strong>${selectedControls.length}</strong></div>
+        <div class="plan-meta-item">&middot;</div>
+        <div class="plan-meta-item">Combined Impact Score: <strong>${totalImpact} / ${selectedControls.length * MAX_SCORE}</strong></div>
+      </div>
+    </div>
+
+    <div class="action-bar no-print">
+      <button class="btn-print" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / Save as PDF
+      </button>
+      <a href="hardening.html" class="btn-back">← Edit Selection</a>
+      <a href="hardening.html" class="btn-back" style="margin-left:auto">Build Different Plan</a>
+    </div>
+
+    <div class="plan-summary">
+      <div class="summary-stat">
+        <div class="summary-stat-num stat-accent">${selectedControls.length}</div>
+        <div class="summary-stat-label">Controls Selected</div>
+      </div>
+      ${easy.length ? `<div class="summary-stat"><div class="summary-stat-num stat-green">${easy.length}</div><div class="summary-stat-label">Do Today</div></div>` : ""}
+      ${medium.length ? `<div class="summary-stat"><div class="summary-stat-num stat-orange">${medium.length}</div><div class="summary-stat-label">Plan This Month</div></div>` : ""}
+      ${hard.length ? `<div class="summary-stat"><div class="summary-stat-num stat-slate">${hard.length}</div><div class="summary-stat-label">Long-Term</div></div>` : ""}
+    </div>
+
+    ${renderPhase(easy, "phase-easy", "Do Today", "Low Effort — Implement Immediately", "Single toggles and quick policies. No planning cycle needed. These should be done before the next standup.")}
+    ${renderPhase(medium, "phase-medium", "Plan This Month", "Moderate Effort — Days to Weeks", "Requires policy creation, licensing verification, and testing. Achievable without long-term organizational buy-in.")}
+    ${renderPhase(hard, "phase-hard", "Long-Term Initiative", "Significant Investment — Weeks to Months", "Requires hardware, device management, or major rollout. Track these as formal projects with executive sponsorship.")}
+  `;
+}
+</script>
+</body>
+</html>

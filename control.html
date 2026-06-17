@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Control Profile &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" id="page-desc" content="Hardening control profile — M365 Identity Threat Codex">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+  <style>
+    /* ── Complexity & cost badges ─── */
+    .cx-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid;
+    }
+    .cx-badge.cx-1 { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .cx-badge.cx-2 { background: #fff7ed; color: var(--high); border-color: var(--high-border); }
+    .cx-badge.cx-3 { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+
+    .cost-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid;
+    }
+    .cost-free     { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .cost-included { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .cost-upgrade  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+
+    /* ── Sidebar quick stats ─────── */
+    .ctrl-stats {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--surface-alt);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .ctrl-stats h3 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-subtle);
+      margin-bottom: 12px;
+    }
+    .stat-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .stat-row:last-child { margin-bottom: 0; }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-subtle);
+      font-weight: 500;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .stat-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: right;
+    }
+
+    /* ── Attack protection cards ─── */
+    .protected-attacks {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .attack-prot-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .attack-prot-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+    }
+    .attack-prot-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .attack-prot-name:hover { color: var(--accent); }
+    .attack-prot-body {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── M365 config box ─────────── */
+    .m365-box {
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .m365-box-header {
+      background: #eff6ff;
+      padding: 12px 16px;
+      border-bottom: 1px solid #bfdbfe;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .m365-box-header .m365-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .m365-box-header h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1d4ed8;
+    }
+    .m365-box-meta {
+      padding: 12px 16px;
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .m365-meta-row {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .m365-meta-row strong { color: var(--text); }
+    .m365-box-steps {
+      padding: 16px;
+    }
+    .m365-box-steps ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .m365-box-steps li {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 8px;
+    }
+    .m365-box-steps li:last-child { margin-bottom: 0; }
+
+    /* ── Vendor cards ────────────── */
+    .vendor-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .vendor-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: var(--surface);
+    }
+    .vendor-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .vendor-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── Implementation plan ─────── */
+    .impl-plan {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .impl-step {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      align-items: flex-start;
+    }
+    .impl-step-num {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    .impl-step-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    /* ── Not found ───────────────── */
+    .not-found {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+    .not-found h2 { font-size: 20px; color: var(--text); margin-bottom: 12px; }
+
+    /* ── Attack eyebrow ─────────── */
+    .attack-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    /* ── Back link ───────────────── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-subtle);
+      text-decoration: none;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    /* Coverage pill reuse */
+    .cov-pill {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+    .cov-3 { background: var(--critical-bg); color: var(--critical); border-color: var(--critical-border); }
+    .cov-2 { background: var(--high-bg);     color: var(--high);     border-color: var(--high-border); }
+    .cov-1 { background: #fffbeb;            color: var(--medium);   border-color: #fcd34d; }
+    .cov-0 { background: var(--surface-alt); color: var(--text-subtle); border-color: var(--border); }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="index.html">Attacks</a>
+      <a href="hardening.html">Hardening Matrix</a>
+      <a href="index.html#about">About</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge">For Defenders</span>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content">
+  <!-- rendered by JS -->
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="hardening.html">Hardening Matrix</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/hardening-data.js"></script>
+<script src="assets/main.js"></script>
+<script>
+// ── Helpers ──────────────────────────────────────────────
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+function coverageLabel(s) { return ["—", "Partial", "High", "Critical"][s] || "—"; }
+function coverageClass(s) { return ["cov-0","cov-1","cov-2","cov-3"][s] || "cov-0"; }
+
+function costClass(cost) {
+  return { free: "cost-free", included: "cost-included", upgrade: "cost-upgrade" }[cost] || "cost-included";
+}
+
+function complexityClass(n) { return ["","cx-1","cx-2","cx-3"][n] || "cx-2"; }
+function complexityLabel(n) { return ["","Low","Medium","High"][n] || ""; }
+
+// ── Render ───────────────────────────────────────────────
+const id = getParam("id");
+const control = CONTROLS.find(c => c.id === id);
+const mount = document.getElementById("page-content");
+
+if (!control) {
+  mount.innerHTML = `
+    <div class="not-found">
+      <h2>Control Not Found</h2>
+      <p>No control profile exists for id "<strong>${id || "(none)"}</strong>".</p>
+      <a href="hardening.html" style="color:var(--accent)">← Back to Hardening Matrix</a>
+    </div>
+  `;
+} else {
+  document.title = `${control.name} — M365 Identity Threat Codex`;
+  document.getElementById("page-desc").content = `Hardening control profile: ${control.name}`;
+
+  const impactScore = totalScore(control);
+  const impactPct   = Math.round((impactScore / MAX_SCORE) * 100);
+
+  const hasThirdParty = control.thirdParty && control.thirdParty.length > 0;
+
+  const tocLinks = [
+    { href: "#overview",   label: "Overview" },
+    { href: "#protection", label: "Attacks Protected" },
+    { href: "#complexity", label: "Complexity" },
+    { href: "#cost",       label: "Cost & Licensing" },
+    { href: "#m365",       label: "M365 Implementation" },
+    ...(hasThirdParty ? [{ href: "#vendors", label: "Third-Party Vendors" }] : []),
+    { href: "#plan",       label: "Implementation Plan" },
+  ];
+
+  mount.innerHTML = `
+    <div class="attack-page">
+      <aside class="attack-sidebar">
+        <a href="hardening.html" class="toc-back">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          Hardening Matrix
+        </a>
+        <nav id="toc">
+          <div class="toc-label">On This Page</div>
+          <ul class="toc-list">
+            ${tocLinks.map((l, i) => `<li><a href="${l.href}"><span class="toc-num">0${i+1}</span>${l.label}</a></li>`).join("")}
+          </ul>
+        </nav>
+        <div class="ctrl-stats">
+          <h3>At a Glance</h3>
+          <div class="stat-row">
+            <span class="stat-label">Priority</span>
+            <span class="stat-val">
+              <span class="prev-priority ${control.priority.toLowerCase()}">${control.priority}</span>
+            </span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Effort</span>
+            <span class="stat-val">
+              <span class="cx-badge ${complexityClass(control.complexity)}">${complexityLabel(control.complexity)}</span>
+            </span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Cost</span>
+            <span class="stat-val">
+              <span class="cost-badge ${costClass(control.cost)}">${control.costLabel}</span>
+            </span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Impact Score</span>
+            <span class="stat-val" style="font-size:15px;font-weight:800;">${impactScore}<span style="font-size:12px;font-weight:400;color:var(--text-subtle)">/${MAX_SCORE}</span></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Category</span>
+            <span class="stat-val" style="font-size:11px;text-align:right;line-height:1.4">${control.category}</span>
+          </div>
+        </div>
+      </aside>
+
+      <div class="attack-content">
+        <div class="attack-header">
+          <div class="attack-eyebrow">Hardening Control</div>
+          <h1 class="attack-title">${control.name}</h1>
+          <div class="attack-meta">
+            <span class="meta-pill">${control.category}</span>
+            <span class="meta-pill cx-badge ${complexityClass(control.complexity)}">${complexityLabel(control.complexity)} Effort</span>
+            <span class="meta-pill cost-badge ${costClass(control.cost)}">${control.costLabel}</span>
+          </div>
+        </div>
+
+        <!-- Overview -->
+        <section class="attack-section" id="overview">
+          <div class="section-heading">
+            <span class="section-num">01</span>
+            <h2>What Is It?</h2>
+          </div>
+          ${(control.overview || []).map(p => `<p>${p}</p>`).join("")}
+        </section>
+
+        <!-- Attacks Protected -->
+        <section class="attack-section" id="protection">
+          <div class="section-heading">
+            <span class="section-num">02</span>
+            <h2>Attacks It Protects Against</h2>
+          </div>
+          <p>Coverage levels reflect how directly this control stops or degrades each attack. <strong>Critical</strong> = directly prevents the attack vector. <strong>High</strong> = significantly degrades it. <strong>Partial</strong> = adds friction at one stage.</p>
+          <div class="protected-attacks">
+            ${ATTACKS.map(a => {
+              const cov = control.coverage[a.id] || 0;
+              if (cov === 0) return `
+                <div class="attack-prot-card">
+                  <div class="attack-prot-header">
+                    <a href="${a.url}" class="attack-prot-name">${a.name}</a>
+                    <span class="cov-pill cov-0">No Coverage</span>
+                  </div>
+                  <div class="attack-prot-body" style="color:var(--text-subtle)">This control does not address the attack chain for ${a.name}.</div>
+                </div>
+              `;
+              return `
+                <div class="attack-prot-card">
+                  <div class="attack-prot-header">
+                    <a href="${a.url}" class="attack-prot-name">${a.name}</a>
+                    <span class="cov-pill ${coverageClass(cov)}">${coverageLabel(cov)}</span>
+                  </div>
+                  <div class="attack-prot-body">${(control.why && control.why[a.id]) || ""}</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </section>
+
+        <!-- Complexity -->
+        <section class="attack-section" id="complexity">
+          <div class="section-heading">
+            <span class="section-num">03</span>
+            <h2>Is It Easy or Difficult to Implement?</h2>
+          </div>
+          <div class="callout callout-${control.complexity === 1 ? 'info' : control.complexity === 2 ? 'warning' : 'danger'}">
+            <strong>${complexityLabel(control.complexity)} Effort</strong> &mdash; ${control.complexityNote}
+          </div>
+          ${control.complexity === 1 ? `<p>This control is <strong>low-hanging fruit</strong> — a single administrator action with no user disruption and no planning cycle required. If you have not already implemented it, this should be done immediately.</p>` : ""}
+          ${control.complexity === 2 ? `<p>This control requires a <strong>moderate planning cycle</strong> — typically days to a few weeks. You'll need to verify licensing, create and test a policy, and in some cases communicate changes to affected users. It's achievable without long-term organizational buy-in.</p>` : ""}
+          ${control.complexity === 3 ? `<p>This is a <strong>long-term initiative</strong> requiring organizational planning, potential hardware or license procurement, device management infrastructure, and a phased rollout. This should be tracked as a formal project with executive sponsorship — but the high effort reflects the depth of protection it provides.</p>` : ""}
+        </section>
+
+        <!-- Cost & Licensing -->
+        <section class="attack-section" id="cost">
+          <div class="section-heading">
+            <span class="section-num">04</span>
+            <h2>What Does It Cost?</h2>
+          </div>
+          <div class="callout callout-info">
+            <strong>${control.costLabel}</strong> &mdash; ${control.licenseNote}
+          </div>
+          ${control.m365Config ? `
+            <p>Configuration is done natively within Microsoft 365 — no separate product purchase required beyond the license level noted above.</p>
+          ` : ""}
+        </section>
+
+        <!-- M365 Implementation -->
+        <section class="attack-section" id="m365">
+          <div class="section-heading">
+            <span class="section-num">05</span>
+            <h2>How to Implement Using M365 Native Tools</h2>
+          </div>
+          ${control.m365Config ? `
+            <div class="m365-box">
+              <div class="m365-box-header">
+                <svg class="m365-icon" viewBox="0 0 20 20" fill="none" stroke="#1d4ed8" stroke-width="1.5"><path d="M3 6l7-3 7 3v8l-7 3-7-3V6z"/><path d="M10 3v16M3 6l7 4 7-4"/></svg>
+                <h4>M365 Admin Configuration</h4>
+              </div>
+              <div class="m365-box-meta">
+                <div class="m365-meta-row"><strong>Where to configure:</strong> ${control.m365Config.where}</div>
+                <div class="m365-meta-row"><strong>License required:</strong> ${control.m365Config.license}</div>
+              </div>
+              <div class="m365-box-steps">
+                <ol>
+                  ${control.m365Config.steps.map(s => `<li>${s}</li>`).join("")}
+                </ol>
+              </div>
+            </div>
+          ` : `<p>No native M365 implementation available for this control. See third-party options below.</p>`}
+        </section>
+
+        <!-- Third-Party Vendors -->
+        ${hasThirdParty ? `
+        <section class="attack-section" id="vendors">
+          <div class="section-heading">
+            <span class="section-num">06</span>
+            <h2>Third-Party Vendor Options</h2>
+          </div>
+          <p>The following vendors offer solutions that address this control, either as alternatives to the M365 native approach or as enhancements that provide additional capability.</p>
+          <div class="vendor-grid">
+            ${control.thirdParty.map(v => `
+              <div class="vendor-card">
+                <div class="vendor-name">${v.name}</div>
+                <div class="vendor-note">${v.note}</div>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        ` : ""}
+
+        <!-- Implementation Plan -->
+        <section class="attack-section" id="plan">
+          <div class="section-heading">
+            <span class="${hasThirdParty ? 'section-num' : 'section-num'}">0${hasThirdParty ? "7" : "6"}</span>
+            <h2>High-Level Implementation Plan</h2>
+          </div>
+          <p>A phased roadmap for rolling this control out safely. The phases below reflect the complexity rating — a Low Effort control can often be completed in a single work session; a High Effort control should be tracked as a formal project.</p>
+          <div class="impl-plan">
+            ${(control.implementationPlan || []).map((step, i) => `
+              <div class="impl-step">
+                <div class="impl-step-num">${i + 1}</div>
+                <div class="impl-step-text">${step}</div>
+              </div>
+            `).join("")}
+          </div>
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+            <a href="plan-builder.html?controls=${control.id}" class="button-primary" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;">
+              Add to Implementation Plan &rarr;
+            </a>
+            <a href="hardening.html" style="margin-left:16px;font-size:13px;font-weight:600;color:var(--text-muted);text-decoration:none;">← Back to Hardening Matrix</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
+
+  // Activate sidebar IntersectionObserver
+  const allTocLinks = document.querySelectorAll("#toc .toc-list li a");
+  if (allTocLinks.length && "IntersectionObserver" in window) {
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          allTocLinks.forEach(l => l.classList.remove("active"));
+          const match = document.querySelector(`#toc a[href="#${entry.target.id}"]`);
+          if (match) match.classList.add("active");
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll(".attack-section[id]").forEach(s => obs.observe(s));
+  }
+}
+</script>
+</body>
+</html>
