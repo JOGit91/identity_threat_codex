@@ -93,6 +93,21 @@
       margin-left: auto;
     }
 
+    .select-all-btn {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .select-all-btn:hover { border-color: var(--accent); color: var(--accent); }
+
     /* ── Tier sections ───────────────────────────────── */
     .tier {
       margin-bottom: 40px;
@@ -514,6 +529,7 @@
       <button class="sort-btn active" id="btn-impact" onclick="setSort('impact')">Highest Impact</button>
       <button class="sort-btn" id="btn-ease" onclick="setSort('ease')">Ease of Implementation</button>
     </div>
+    <button class="select-all-btn" onclick="selectAll()">Select all</button>
     <span class="sort-hint" id="sort-hint">Grouped by cross-attack coverage score — implement top tier first</span>
   </div>
 
@@ -761,6 +777,17 @@ function toggleControl(id, checked) {
   } else {
     selected.delete(id);
   }
+  updatePlanBar();
+}
+
+function selectAll() {
+  CONTROLS.forEach(c => {
+    if (!implemented.has(c.id)) {
+      selected.add(c.id);
+      const cb = document.getElementById(`chk-${c.id}`);
+      if (cb) cb.checked = true;
+    }
+  });
   updatePlanBar();
 }
 
