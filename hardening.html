@@ -382,11 +382,73 @@
     }
     .plan-go:hover { opacity: 0.88; }
 
+    /* ── Implemented toggle ──────────────────────────────── */
+    .impl-btn {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-subtle);
+      transition: all 0.15s;
+      font-family: inherit;
+      padding: 0;
+    }
+    .impl-btn svg { pointer-events: none; }
+    .impl-btn:hover { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+    .impl-btn.done { border-color: #16a34a; color: white; background: #16a34a; }
+
+    /* ── Impl banner ─────────────────────────────────────── */
+    .impl-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #15803d;
+      flex-wrap: wrap;
+    }
+    .impl-banner-icon { font-size: 15px; flex-shrink: 0; }
+    .impl-banner-text { flex: 1; font-weight: 500; min-width: 120px; }
+    .impl-banner-btn {
+      font-size: 12px;
+      font-weight: 600;
+      background: white;
+      border: 1px solid #bbf7d0;
+      border-radius: 5px;
+      padding: 4px 11px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      color: #15803d;
+      transition: background 0.15s;
+    }
+    .impl-banner-btn:hover { background: #dcfce7; }
+    .impl-banner-btn.reset { color: var(--text-muted); border-color: var(--border); }
+    .impl-banner-btn.reset:hover { background: var(--surface-alt); }
+
+    /* ── Done row styling (when shown) ──────────────────── */
+    .control-row.done { opacity: 0.45; }
+    .control-row.done .control-name-link {
+      text-decoration: line-through;
+      color: var(--text-subtle);
+    }
+
     @media (max-width: 640px) {
       .coverage-row { display: none; }
       .profile-link { display: none; }
       .sort-hint { display: none; }
       .plan-bar-hint { display: none; }
+      .impl-btn { display: none; }
     }
   </style>
 </head>
@@ -433,6 +495,13 @@
     <span class="sort-hint" id="sort-hint">Grouped by cross-attack coverage score — implement top tier first</span>
   </div>
 
+  <div class="impl-banner" id="impl-banner" style="display:none">
+    <span class="impl-banner-icon">✓</span>
+    <span class="impl-banner-text" id="impl-banner-text"></span>
+    <button class="impl-banner-btn" id="impl-show-btn" onclick="toggleShowImpl()">Show</button>
+    <button class="impl-banner-btn reset" onclick="resetImpl()">Reset all</button>
+  </div>
+
   <div id="tiers-container"></div>
 </div>
 
@@ -466,6 +535,57 @@
 // ── State ────────────────────────────────────────────────
 let sortMode = "impact";
 const selected = new Set();
+
+// Implemented controls — persisted in localStorage
+const IMPL_KEY = "codex_impl_v1";
+const implemented = new Set(JSON.parse(localStorage.getItem(IMPL_KEY) || "[]"));
+let showImplemented = false;
+
+function saveImpl() {
+  localStorage.setItem(IMPL_KEY, JSON.stringify([...implemented]));
+}
+
+function markImplemented(id) {
+  if (implemented.has(id)) {
+    implemented.delete(id);
+  } else {
+    implemented.add(id);
+    selected.delete(id); // remove from plan selection if hidden
+  }
+  saveImpl();
+  render();
+  updateImplBanner();
+  updatePlanBar();
+}
+
+function toggleShowImpl() {
+  showImplemented = !showImplemented;
+  render();
+  updateImplBanner();
+}
+
+function resetImpl() {
+  implemented.clear();
+  showImplemented = false;
+  saveImpl();
+  render();
+  updateImplBanner();
+}
+
+function updateImplBanner() {
+  const banner  = document.getElementById("impl-banner");
+  const text    = document.getElementById("impl-banner-text");
+  const showBtn = document.getElementById("impl-show-btn");
+  const n = implemented.size;
+
+  if (n === 0) { banner.style.display = "none"; return; }
+
+  banner.style.display = "flex";
+  text.textContent = showImplemented
+    ? `${n} implemented control${n !== 1 ? "s" : ""} shown greyed out below`
+    : `${n} control${n !== 1 ? "s" : ""} marked as implemented and hidden`;
+  showBtn.textContent = showImplemented ? "Hide" : "Show";
+}
 
 // ── Coverage helpers ─────────────────────────────────────
 function coverageLabel(s) { return ["—", "Partial", "High", "Critical"][s] || "—"; }
@@ -536,8 +656,14 @@ function render() {
   const tiers = sortMode === "impact" ? IMPACT_TIERS : EASE_TIERS;
 
   tiers.forEach(tier => {
-    const controls = CONTROLS.filter(tier.filter).sort(tier.sort);
-    if (!controls.length) return;
+    const allInTier = CONTROLS.filter(tier.filter).sort(tier.sort);
+    const controls  = allInTier.filter(c => showImplemented || !implemented.has(c.id));
+    if (!controls.length && !allInTier.some(c => implemented.has(c.id))) return;
+
+    const hiddenCount = allInTier.length - controls.length;
+    const countLabel  = hiddenCount > 0
+      ? `${controls.length} of ${allInTier.length} controls`
+      : `${allInTier.length} control${allInTier.length !== 1 ? "s" : ""}`;
 
     const section = document.createElement("div");
     section.className = `tier ${tier.cssClass}`;
@@ -548,7 +674,7 @@ function render() {
           <h2>${tier.title}</h2>
           <p>${tier.desc}</p>
         </div>
-        <span class="tier-count">${controls.length} control${controls.length !== 1 ? "s" : ""}</span>
+        <span class="tier-count">${countLabel}</span>
       </div>
       <div class="tier-controls" id="tc-${tier.cssClass}"></div>
     `;
@@ -556,12 +682,13 @@ function render() {
 
     const body = document.getElementById(`tc-${tier.cssClass}`);
     controls.forEach(c => {
-      const score = totalScore(c);
+      const score   = totalScore(c);
+      const isImpl  = implemented.has(c.id);
       const isChecked = selected.has(c.id);
       const row = document.createElement("div");
-      row.className = "control-row";
+      row.className = "control-row" + (isImpl ? " done" : "");
       row.innerHTML = `
-        <input type="checkbox" class="control-check" id="chk-${c.id}" ${isChecked ? "checked" : ""} onchange="toggleControl('${c.id}', this.checked)">
+        <input type="checkbox" class="control-check" id="chk-${c.id}" ${isChecked ? "checked" : ""} ${isImpl ? "disabled" : ""} onchange="toggleControl('${c.id}', this.checked)">
         <div class="priority-col">
           <span class="prev-priority ${c.priority.toLowerCase()}">${c.priority}</span>
         </div>
@@ -585,6 +712,9 @@ function render() {
           <div class="score-denom">/${MAX_SCORE}</div>
         </div>
         <a href="control.html?id=${c.id}" class="profile-link">Profile &rarr;</a>
+        <button class="impl-btn ${isImpl ? "done" : ""}" onclick="markImplemented('${c.id}')" title="${isImpl ? "Unmark — not yet implemented" : "Mark as implemented"}">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5 6 4.5 9 10.5 3"/></svg>
+        </button>
       `;
       body.appendChild(row);
     });
@@ -632,6 +762,7 @@ function updatePlanBar() {
 
 // ── Init ─────────────────────────────────────────────────
 render();
+updateImplBanner();
 </script>
 </body>
 </html>
