@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MFA Fatigue / Push Bombing &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="How MFA fatigue and push bombing work in Microsoft 365 attacks, detection queries, threat actors, and hardening steps for defenders.">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="../index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="../index.html">Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="../index.html#about">About</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ───────────────────────────────────────────────── -->
+<div class="attack-page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="attack-sidebar">
+    <a class="toc-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      All Attacks
+    </a>
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+      <li><a href="#why-used"><span class="toc-num">02</span> Why Attackers Use It</a></li>
+      <li><a href="#impact"><span class="toc-num">03</span> Impact</a></li>
+      <li><a href="#detection"><span class="toc-num">04</span> Detection &amp; Hunting</a></li>
+      <li><a href="#threat-actors"><span class="toc-num">05</span> Threat Actors</a></li>
+      <li><a href="#follow-on"><span class="toc-num">06</span> Follow-on Activity</a></li>
+      <li><a href="#prevention"><span class="toc-num">07</span> Prevention</a></li>
+      <li><a href="#resources"><span class="toc-num">08</span> Resources</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="attack-content">
+
+    <div class="attack-breadcrumb">
+      <a href="../index.html">M365 Identity Threat Codex</a>
+      <span class="sep">&rsaquo;</span>
+      <span>MFA Fatigue / Push Bombing</span>
+    </div>
+
+    <header class="attack-header">
+      <h1 class="attack-title">MFA Fatigue / Push Bombing</h1>
+      <div class="attack-meta">
+        <span class="sev-badge sev-high">High</span>
+        <span class="meta-pill">Initial Access</span>
+        <span class="meta-pill">Defense Evasion</span>
+        <span class="meta-pill mitre">T1621</span>
+        <span class="meta-pill mitre">T1078</span>
+        <span class="meta-pill">Updated Jun 2026</span>
+      </div>
+      <p class="attack-summary">
+        MFA fatigue — also called push bombing or MFA prompt bombing — exploits the human element of multi-factor authentication. Attackers who already have a victim's credentials send repeated MFA push notifications, wearing down the victim until they approve one out of frustration, confusion, or the false belief that accepting will stop the notifications. No credential theft, no phishing page, no technical exploit required.
+      </p>
+    </header>
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section id="overview" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        What is MFA Fatigue?
+        <span class="section-num">01</span>
+      </h2>
+
+      <p>
+        Modern push-notification MFA (Microsoft Authenticator, Duo, Okta Verify) works by sending the user a notification on their phone when a sign-in attempt is made. The user approves or denies it. This is far stronger than SMS or OTP codes — but it has one weakness: the approval decision is entirely up to the user, and users can be manipulated.
+      </p>
+      <p>
+        MFA fatigue works because of a predictable human response. When a victim receives an unexpected MFA push, their instinct is to wonder "did I just try to sign in?" — not to deny it. After 10, 20, or 30 notifications at all hours of the night, many users:
+      </p>
+      <ul>
+        <li>Approve one to make the notifications stop, believing the "bug" will clear</li>
+        <li>Approve one assuming they must have somehow triggered it themselves</li>
+        <li>Approve one after receiving a social engineering call from the attacker impersonating IT support, who says "I see you're getting notifications — please approve the one I just sent to clear the issue"</li>
+      </ul>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">The Attacker Only Needs One Approval</span>
+        <p>The attacker can send hundreds of push notifications at zero cost. They only need a single approval to succeed. The asymmetry is brutal: the defender must prevent every approval; the attacker only needs one.</p>
+      </div>
+
+      <p>
+        MFA fatigue is typically the second step of an attack chain. The first step is obtaining the victim's credentials — through password spraying, credential stuffing, phishing, or purchasing from a stealer log marketplace. With credentials in hand, the attacker can trigger MFA pushes at will by attempting a sign-in.
+      </p>
+    </section>
+
+    <!-- ── 02 WHY USED ── -->
+    <section id="why-used" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        Why Do Threat Actors Use It?
+        <span class="section-num">02</span>
+      </h2>
+
+      <ul>
+        <li><strong>No technical skill required.</strong> Once an attacker has valid credentials — obtained from any source — generating MFA pushes requires nothing more than repeatedly attempting a sign-in. No exploit, no proxy, no custom tooling.</li>
+        <li><strong>MFA is widely deployed but not universally hardened.</strong> Many organizations have enabled MFA but left the default push approval flow in place. Number matching and additional context — the controls that make this attack impractical — are not always enabled.</li>
+        <li><strong>The social engineering component scales.</strong> Push bombing is often paired with a vishing call impersonating IT helpdesk. The call adds authority and urgency: "I can see there's a sync issue on your account. Please approve the notification I'm sending now." Victims who would never approve a random push often approve one when an authoritative voice is telling them to.</li>
+        <li><strong>Highly effective against non-technical users.</strong> Finance staff, executives, and others who are high-value targets but not security-savvy are disproportionately likely to approve a push to resolve what they perceive as a technical problem.</li>
+        <li><strong>Credential supply is abundant.</strong> Millions of M365 credentials circulate in stealer log markets for a few dollars per set. Attackers can run MFA fatigue campaigns at industrial scale against organizational user bases.</li>
+      </ul>
+    </section>
+
+    <!-- ── 03 IMPACT ── -->
+    <section id="impact" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        What Happens If Attackers Succeed?
+        <span class="section-num">03</span>
+      </h2>
+
+      <p>
+        A successful MFA approval hands the attacker a fully authenticated session — equivalent to a legitimate user sign-in from Entra ID's perspective. The attacker has access to every M365 service the victim can reach: Exchange Online, SharePoint, Teams, OneDrive, and any Azure resources.
+      </p>
+
+      <h3>Immediate Actions</h3>
+      <ul>
+        <li><strong>Email access:</strong> Full read/write access to the victim's mailbox. Attackers immediately search for financial workflows, active wire transfers, vendor relationships, and credentials stored in email.</li>
+        <li><strong>Inbox rule creation:</strong> Forwarding rules to external mailboxes; deletion rules targeting security alert emails and any notification about the compromise.</li>
+        <li><strong>Teams access:</strong> Full access to Teams conversations and channels, enabling reconnaissance and further social engineering from the victim's identity.</li>
+        <li><strong>SharePoint / OneDrive:</strong> Access to all files the victim can reach — valuable for data theft and ransomware staging.</li>
+      </ul>
+
+      <h3>Persistence</h3>
+      <ul>
+        <li><strong>New MFA method registration:</strong> The attacker registers their own authenticator app or phone number, maintaining access even after the victim resets their password.</li>
+        <li><strong>Device registration:</strong> Adding an Entra ID-joined device produces a hardware-bound token that survives credential changes.</li>
+        <li><strong>OAuth app consent:</strong> Granting a malicious app consent to the victim's account creates persistent token-based access independent of the session.</li>
+        <li><strong>QuickAssist or remote access tools:</strong> In Scattered Spider campaigns, the social engineering call that accompanies push bombing transitions into a request to install a remote access tool — providing a persistent shell independent of M365 credentials entirely.</li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <span class="callout-title">The Push Bombing Often Continues After Success</span>
+        <p>In documented Scattered Spider campaigns, push bombing continued even after the attacker gained access — to keep IT helpdesk attention focused on the "MFA issue" while the attacker establishes persistence and moves laterally.</p>
+      </div>
+    </section>
+
+    <!-- ── 04 DETECTION ── -->
+    <section id="detection" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        Detection &amp; Threat Hunting
+        <span class="section-num">04</span>
+      </h2>
+
+      <h3>Log Sources</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What to Look For</th>
+              <th>Table (Sentinel)</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-source">Entra ID Sign-in Logs</td>
+              <td>Multiple MFA failures (<code>ResultType 50074</code>, <code>50076</code>) for the same user in a short window, followed by a successful sign-in — the classic push bombing pattern</td>
+              <td><code class="inline">SigninLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Protection</td>
+              <td><strong>MFA Denied</strong> and <strong>Unfamiliar Sign-in Properties</strong> risk events; user risk elevation following repeated MFA failures</td>
+              <td><code class="inline">AADUserRiskEvents</code></td>
+              <td><span class="req-badge req-p1">P2 Required</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Entra ID Audit Logs</td>
+              <td>New MFA method registrations immediately following a successful sign-in; new device registrations; role assignments</td>
+              <td><code class="inline">AuditLogs</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">M365 Unified Audit Log</td>
+              <td>Inbox rule creation, file access, and mail forwarding changes in the minutes following a suspicious sign-in</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Hunt Query 1 — MFA Push Failures Followed by Approval</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Detect push bombing pattern: 3+ MFA failures followed by a successful sign-in
+// ResultType 50074 = MFA required; 50076 = MFA denied by user
+let MfaFailures = SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType in ("50074", "50076")
+| summarize
+    FailureCount = count(),
+    FirstFailure = min(TimeGenerated),
+    LastFailure = max(TimeGenerated)
+    by UserPrincipalName, IPAddress
+| where FailureCount >= 3;
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == 0  // Successful sign-in
+| join kind=inner MfaFailures on UserPrincipalName
+| where TimeGenerated between (LastFailure .. (LastFailure + 1h))
+| project
+    SuccessTime = TimeGenerated,
+    FirstFailure,
+    LastFailure,
+    FailureCount,
+    UserPrincipalName,
+    SuccessIP = IPAddress,
+    AttackIP = IPAddress1,
+    AppDisplayName,
+    DeviceDetail
+| order by SuccessTime desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 2 — High-Volume MFA Failures per User (Active Bombing)</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Users receiving high volumes of MFA push notifications in a 30-minute window
+// Alert threshold: 10+ denials; tune to your environment's baseline
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType in ("50074", "50076", "500121")
+| summarize
+    PushCount = count(),
+    UniqueIPs = dcount(IPAddress),
+    Locations = make_set(tostring(LocationDetails.countryOrRegion))
+    by UserPrincipalName, bin(TimeGenerated, 30m)
+| where PushCount >= 10
+| order by PushCount desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 3 — MFA Approval from New Country</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Successful MFA approval from a country not seen in the past 30 days for this user
+// High-fidelity signal — most users have a stable geographic sign-in pattern
+let KnownCountries = SigninLogs
+| where TimeGenerated between (ago(30d) .. ago(1d))
+| where ResultType == 0
+| summarize KnownCountries = make_set(tostring(LocationDetails.countryOrRegion))
+    by UserPrincipalName;
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == 0
+| where AuthenticationRequirement == "multiFactorAuthentication"
+| extend Country = tostring(LocationDetails.countryOrRegion)
+| join kind=leftouter KnownCountries on UserPrincipalName
+| where not(set_has_element(KnownCountries, Country))
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    Country,
+    KnownCountries,
+    IPAddress,
+    AppDisplayName,
+    DeviceDetail
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 05 THREAT ACTORS ── -->
+    <section id="threat-actors" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        Threat Actors
+        <span class="section-num">05</span>
+      </h2>
+
+      <h3>Scattered Spider (UNC3944 / Octo Tempest)</h3>
+      <p>
+        The group most closely associated with MFA fatigue at scale. Scattered Spider industrialized the combination of push bombing, vishing, and helpdesk social engineering. Their documented campaigns against MGM Resorts, Caesars Entertainment, and dozens of other organizations in 2023 used MFA fatigue as the primary initial access method. Their approach is notable for the social engineering sophistication — impersonating new employees, IT helpdesk staff, and even calling legitimate IT helpdesks to have passwords reset for compromised accounts.
+      </p>
+
+      <h3>Lapsus$ (DEV-0537)</h3>
+      <p>
+        The threat actor group that brought MFA fatigue into mainstream security awareness. Lapsus$ publicly documented their use of push bombing in their Telegram channel and bragged about approvals from sleeping victims who received notifications in the middle of the night. Their targets included Okta, Microsoft, Samsung, NVIDIA, and Uber. The Uber compromise in 2022 was explicitly attributed to a WhatsApp call from an attacker posing as corporate IT, convincing the victim to approve the push.
+      </p>
+
+      <h3>Midnight Blizzard (APT29)</h3>
+      <p>
+        Russia's SVR uses a more targeted variant — sending a small number of carefully timed push notifications during business hours when the victim might plausibly be signing in. Rather than volume-based fatigue, this approach relies on timing and social engineering to make the push seem plausible.
+      </p>
+
+      <h3>Commodity BEC Actors</h3>
+      <p>
+        MFA fatigue has diffused widely beyond named threat actor groups. Credential marketplaces selling M365 username/password combinations explicitly advertise "MFA can be bombed" as a selling point. Commodity BEC actors targeting finance departments and executives use this technique routinely.
+      </p>
+    </section>
+
+    <!-- ── 06 FOLLOW-ON ── -->
+    <section id="follow-on" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </span>
+        Follow-on Activity
+        <span class="section-num">06</span>
+      </h2>
+
+      <ul>
+        <li><strong>Inbox rule creation:</strong> Forwarding and deletion rules are created within minutes of a successful approval to hide security alerts and exfiltrate email.</li>
+        <li><strong>MFA method registration:</strong> A new authenticator app is registered to the account, giving the attacker independent MFA access that survives a password reset.</li>
+        <li><strong>Device registration:</strong> A new Entra-joined device is registered, producing a device-bound credential independent of the current session token.</li>
+        <li><strong>QuickAssist / remote tool installation:</strong> In social engineering-heavy campaigns, the vishing call transitions to requesting the victim install a remote access tool — providing a persistent shell completely independent of M365 credentials.</li>
+        <li><strong>Lateral movement via Teams:</strong> The attacker uses the victim's Teams identity to send further social engineering messages to colleagues — including push bombing other users in the same organization.</li>
+        <li><strong>Data exfiltration:</strong> Bulk download of SharePoint and OneDrive files; mail export via Graph API or EWS.</li>
+        <li><strong>Ransomware deployment:</strong> In enterprise-scale campaigns, MFA fatigue is the initial access step for a full ransomware deployment. Scattered Spider campaigns explicitly followed this path at MGM and Caesars.</li>
+      </ul>
+    </section>
+
+    <!-- ── 07 PREVENTION ── -->
+    <section id="prevention" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        Prevention
+        <span class="section-num">07</span>
+      </h2>
+
+      <div class="callout callout-info">
+        <span class="callout-title">Two Controls Eliminate This Attack</span>
+        <p><strong>Number Matching</strong> means a blind push approval doesn't work — the attacker can't complete authentication without the victim reading and typing a specific number. <strong>FIDO2 / Windows Hello for Business</strong> eliminates push notifications entirely. Either control makes MFA fatigue practically infeasible. Both are available at no additional license cost.</p>
+      </div>
+
+      <h3>Key Prevention Controls</h3>
+      <ul>
+        <li>
+          <strong>Enable Number Matching &amp; Additional Context (Microsoft Authenticator)</strong> — This is the minimum viable response to MFA fatigue for organizations using push MFA. Takes under 30 minutes to enable. No user disruption. Additional context shows the app name and sign-in location inside the notification, making attacker-triggered pushes immediately suspicious.
+        </li>
+        <li>
+          <strong>Deploy Phishing-Resistant MFA (FIDO2 / Windows Hello for Business)</strong> — The definitive solution. No push notifications means no push bombing. This requires hardware investment and a rollout plan, but eliminates the entire attack surface.
+        </li>
+        <li>
+          <strong>Security awareness training</strong> — Teach users: if you receive an unexpected MFA notification, <em>deny it and call IT</em>. Never approve a push you didn't initiate. Urgency from an unknown caller is a red flag, not a reason to approve. This behavioral change is critical because it's the last line of defense when technical controls aren't in place.
+        </li>
+        <li>
+          <strong>Restrict MFA method registration</strong> — Even if an attacker succeeds, blocking MFA method registration from untrusted devices prevents them from establishing persistent MFA access that survives a password reset.
+        </li>
+        <li>
+          <strong>Sign-in risk Conditional Access</strong> — Configure Entra ID Protection sign-in risk policies to detect anomalous MFA patterns and require step-up authentication or block when push bombing indicators are present.
+        </li>
+      </ul>
+
+      <p>See the <a href="../hardening.html" style="color:var(--accent);font-weight:600;">Hardening Matrix</a> for implementation complexity and licensing details for each control.</p>
+    </section>
+
+    <!-- ── 08 RESOURCES ── -->
+    <section id="resources" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+        </span>
+        Further Reading
+        <span class="section-num">08</span>
+      </h2>
+
+      <ul>
+        <li><a href="https://www.microsoft.com/en-us/security/blog/2022/09/22/malicious-oauth-applications-used-to-compromise-email-servers-and-spread-spam/" target="_blank" rel="noopener">Microsoft Security Blog — Octo Tempest / Scattered Spider TTPs</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-number-match" target="_blank" rel="noopener">Microsoft Learn — Enable number matching in Microsoft Authenticator</a></li>
+        <li><a href="https://attack.mitre.org/techniques/T1621/" target="_blank" rel="noopener">MITRE ATT&amp;CK — T1621: Multi-Factor Authentication Request Generation</a></li>
+        <li><a href="https://www.cisa.gov/sites/default/files/2023-11/aa23-320a_scattered_spider.pdf" target="_blank" rel="noopener">CISA Advisory AA23-320A — Scattered Spider</a></li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="../index.html">All Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/main.js"></script>
+</body>
+</html>

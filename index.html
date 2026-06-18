@@ -53,19 +53,19 @@
   </div>
   <div class="hero-stats">
     <div class="hero-stat">
-      <span class="stat-number">4</span>
+      <span class="stat-number">6</span>
       <span class="stat-label">Attacks Documented</span>
     </div>
     <div class="hero-stat">
-      <span class="stat-number">14+</span>
+      <span class="stat-number">20+</span>
       <span class="stat-label">KQL Hunt Queries</span>
     </div>
     <div class="hero-stat">
-      <span class="stat-number">8+</span>
+      <span class="stat-number">10+</span>
       <span class="stat-label">Threat Actors Profiled</span>
     </div>
     <div class="hero-stat">
-      <span class="stat-number">Jun 2025</span>
+      <span class="stat-number">Jun 2026</span>
       <span class="stat-label">Last Updated</span>
     </div>
   </div>
@@ -201,13 +201,71 @@
       </div>
     </a>
 
+    <!-- ── MFA Fatigue / Push Bombing ── -->
+    <a
+      class="attack-card"
+      href="attacks/mfa-fatigue.html"
+      data-searchable="mfa fatigue push bombing mfa prompt bombing authenticator push notification scattered spider lapsus apt29 initial access defense evasion account takeover social engineering vishing"
+      data-categories="initial-access social-engineering"
+    >
+      <div class="card-header">
+        <div class="card-name">MFA Fatigue / Push Bombing</div>
+        <span class="sev-badge sev-high">High</span>
+      </div>
+      <div class="card-category">Initial Access &middot; Defense Evasion</div>
+      <p class="card-desc">
+        Attackers with stolen credentials flood a victim with MFA push notifications until they approve one out of fatigue or confusion. No phishing page required — just a phone number and a password. Often paired with a vishing call impersonating IT support.
+      </p>
+      <div class="card-tags">
+        <span class="tag">Push Bombing</span>
+        <span class="tag">MFA Abuse</span>
+        <span class="tag">Social Engineering</span>
+        <span class="tag">Scattered Spider</span>
+        <span class="tag">Lapsus$</span>
+        <span class="tag">Vishing</span>
+      </div>
+      <div class="card-footer">
+        <span>MITRE T1621 &middot; T1078</span>
+        <span class="card-link">View profile &rarr;</span>
+      </div>
+    </a>
+
+    <!-- ── Mailbox Rule Manipulation ── -->
+    <a
+      class="attack-card"
+      href="attacks/mailbox-rule-manipulation.html"
+      data-searchable="mailbox rule manipulation inbox rule forwarding bec business email compromise exfiltration persistence defense evasion new-inboxrule midnight blizzard scattered spider storm-0539 exchange online"
+      data-categories="credential-access"
+    >
+      <div class="card-header">
+        <div class="card-name">Mailbox Rule Manipulation</div>
+        <span class="sev-badge sev-high">High</span>
+      </div>
+      <div class="card-category">Persistence &middot; Exfiltration &middot; Defense Evasion</div>
+      <p class="card-desc">
+        After gaining mailbox access, attackers create inbox rules to forward email to external addresses and silently delete security alerts — giving them persistent intelligence and hiding the compromise from the victim. Survives password resets if not explicitly remediated.
+      </p>
+      <div class="card-tags">
+        <span class="tag">Inbox Rules</span>
+        <span class="tag">BEC</span>
+        <span class="tag">Email Forwarding</span>
+        <span class="tag">Persistence</span>
+        <span class="tag">Defense Evasion</span>
+        <span class="tag">Wire Fraud</span>
+      </div>
+      <div class="card-footer">
+        <span>MITRE T1114.003 &middot; T1564.008</span>
+        <span class="card-link">View profile &rarr;</span>
+      </div>
+    </a>
+
   </div><!-- /attacks-grid -->
 
   <!-- Coming soon placeholder -->
   <div style="margin-top: 32px; padding: 32px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: var(--radius); text-align: center;">
     <div style="font-size: 13px; font-weight: 600; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Coming Soon</div>
     <div style="font-size: 14px; color: var(--text-muted);">
-      MFA Fatigue / Push Bombing &nbsp;&middot;&nbsp; Adversary-in-the-Middle Phishing &nbsp;&middot;&nbsp; Mailbox Rule Manipulation &nbsp;&middot;&nbsp; Password Spray
+      Adversary-in-the-Middle Phishing &nbsp;&middot;&nbsp; Password Spray &nbsp;&middot;&nbsp; Service Principal Abuse &nbsp;&middot;&nbsp; Conditional Access Policy Tampering
     </div>
   </div>
 

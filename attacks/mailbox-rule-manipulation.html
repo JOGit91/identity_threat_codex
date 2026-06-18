@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mailbox Rule Manipulation &mdash; M365 Identity Threat Codex</title>
+  <meta name="description" content="How attackers use inbox rules in Microsoft 365 to exfiltrate email, hide compromise, and maintain persistence — detection queries and hardening steps for defenders.">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23c0392b'/><path d='M16 7l7 4v6c0 5-3 8-7 9-4-1-7-4-7-9V11z' fill='white' stroke='none'/></svg>">
+</head>
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a class="site-brand" href="../index.html">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 6 3.5 9.5 8 11 4.5-1.5 8-5 8-11V6z"/></svg>
+      </div>
+      <div class="brand-name">
+        M365 Identity Threat Codex
+        <span class="brand-sub">Defender Reference · Microsoft 365</span>
+      </div>
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="../index.html">Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="../index.html#about">About</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── LAYOUT ───────────────────────────────────────────────── -->
+<div class="attack-page">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="attack-sidebar">
+    <a class="toc-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      All Attacks
+    </a>
+    <div class="toc-label">On this page</div>
+    <ul class="toc-list">
+      <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+      <li><a href="#why-used"><span class="toc-num">02</span> Why Attackers Use It</a></li>
+      <li><a href="#impact"><span class="toc-num">03</span> Impact</a></li>
+      <li><a href="#detection"><span class="toc-num">04</span> Detection &amp; Hunting</a></li>
+      <li><a href="#threat-actors"><span class="toc-num">05</span> Threat Actors</a></li>
+      <li><a href="#follow-on"><span class="toc-num">06</span> Follow-on Activity</a></li>
+      <li><a href="#prevention"><span class="toc-num">07</span> Prevention</a></li>
+      <li><a href="#resources"><span class="toc-num">08</span> Resources</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="attack-content">
+
+    <div class="attack-breadcrumb">
+      <a href="../index.html">M365 Identity Threat Codex</a>
+      <span class="sep">&rsaquo;</span>
+      <span>Mailbox Rule Manipulation</span>
+    </div>
+
+    <header class="attack-header">
+      <h1 class="attack-title">Mailbox Rule Manipulation</h1>
+      <div class="attack-meta">
+        <span class="sev-badge sev-high">High</span>
+        <span class="meta-pill">Persistence</span>
+        <span class="meta-pill">Exfiltration</span>
+        <span class="meta-pill">Defense Evasion</span>
+        <span class="meta-pill mitre">T1114.003</span>
+        <span class="meta-pill mitre">T1564.008</span>
+        <span class="meta-pill">Updated Jun 2026</span>
+      </div>
+      <p class="attack-summary">
+        Mailbox rule manipulation is one of the most reliable post-compromise actions in M365 attacks. After gaining account access, attackers create inbox rules to forward copies of email to external addresses, delete security alerts before the victim sees them, and hide evidence of the intrusion — all from within the victim's own mailbox, using Microsoft's legitimate rules engine.
+      </p>
+    </header>
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section id="overview" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        What is Mailbox Rule Manipulation?
+        <span class="section-num">01</span>
+      </h2>
+
+      <p>
+        Microsoft 365 Exchange Online allows users to create inbox rules — automated filters that process incoming email based on conditions (sender, subject, keywords) and take actions (move, delete, forward, redirect). This is a legitimate productivity feature. Attackers abuse it as a post-compromise persistence and exfiltration mechanism.
+      </p>
+      <p>
+        Once an attacker gains access to an account — through any initial access method — one of the first actions documented across virtually every M365 compromise is creating one or more inbox rules with malicious intent:
+      </p>
+      <ul>
+        <li><strong>Forwarding rules:</strong> A rule that forwards every incoming email (or emails matching specific keywords) to an external address the attacker controls. This gives the attacker a persistent copy of every email the victim receives — even after the attacker's session is terminated.</li>
+        <li><strong>Deletion rules:</strong> A rule that automatically deletes emails matching keywords like "Microsoft Security alert," "Your account," "unusual sign-in," or "password reset" — preventing the victim from seeing the security notifications generated by their own compromise.</li>
+        <li><strong>Move-to-obscure-folder rules:</strong> A rule that moves flagged emails to a folder the victim rarely checks, effectively hiding them without deleting them — avoiding detection by log queries that specifically look for DeleteMessage actions.</li>
+      </ul>
+
+      <div class="callout callout-danger">
+        <span class="callout-title">Rules Persist After Session Termination</span>
+        <p>Unlike a live attacker session, inbox rules are stored in the mailbox and execute server-side. If the attacker's session is revoked — by password reset, token revocation, or IT intervention — the forwarding rule continues running. The attacker receives email indefinitely until the rule is explicitly found and deleted. Many incident responses miss this.</p>
+      </div>
+
+      <h3>How Rules Are Created</h3>
+      <p>
+        Mailbox rules can be created through multiple interfaces, all of which log identically in the Unified Audit Log:
+      </p>
+      <ul>
+        <li>Outlook Web App (OWA) — the most common method for interactive attackers</li>
+        <li>Exchange Web Services (EWS) API — used by tooling and automated attack frameworks</li>
+        <li>Microsoft Graph API (with <code>Mail.ReadWrite</code>) — used when access is via OAuth app consent</li>
+        <li>Exchange Online PowerShell — <code>New-InboxRule</code> cmdlet, common in automated BEC tooling</li>
+      </ul>
+    </section>
+
+    <!-- ── 02 WHY USED ── -->
+    <section id="why-used" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        Why Do Threat Actors Use It?
+        <span class="section-num">02</span>
+      </h2>
+
+      <ul>
+        <li><strong>Continuous exfiltration without maintaining a session.</strong> A forwarding rule runs server-side. The attacker doesn't need an active connection — they just collect copies of incoming email at an external mailbox. Even if the account is fully remediated, rules created before remediation may continue running if not explicitly checked.</li>
+        <li><strong>Hides the compromise from the victim.</strong> Deletion rules targeting security alert emails mean the legitimate user never sees the Microsoft sign-in alerts, unusual activity notifications, or password reset confirmations generated by the attacker's activity. This buys the attacker days or weeks of undetected access.</li>
+        <li><strong>Low technical barrier.</strong> Creating an inbox rule requires only authenticated access to OWA or Exchange. No custom tooling, no elevated privileges, no exploit. Any attacker with valid credentials and a completed MFA can do this in under a minute.</li>
+        <li><strong>Survives partial remediation.</strong> Incident responders who focus on password resets and session revocation without checking inbox rules leave a persistent exfiltration channel running. Documented BEC cases show attackers continuing to receive forwarded email for days or weeks post-"remediation."</li>
+        <li><strong>Enables BEC without maintaining active access.</strong> For business email compromise, the attacker needs to monitor for replies to fraudulent wire transfer requests. A forwarding rule handles this automatically — the attacker receives a copy of every reply without needing to log into the account again.</li>
+      </ul>
+    </section>
+
+    <!-- ── 03 IMPACT ── -->
+    <section id="impact" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        What Happens If Attackers Succeed?
+        <span class="section-num">03</span>
+      </h2>
+
+      <h3>Exfiltration</h3>
+      <ul>
+        <li><strong>Email forwarding:</strong> Every email the victim receives — including vendor invoices, internal financial approvals, HR communications, and client correspondence — is forwarded to the attacker in real time. For a CFO or finance manager, this is the complete picture of an organization's financial operations.</li>
+        <li><strong>Keyword-targeted forwarding:</strong> Sophisticated actors create rules targeting specific keywords ("invoice," "wire transfer," "banking," "payment," "approval") to focus the exfiltration on financially relevant email while keeping rule activity lower volume and harder to spot.</li>
+      </ul>
+
+      <h3>Defense Evasion</h3>
+      <ul>
+        <li><strong>Security alert suppression:</strong> Microsoft generates email alerts for unusual sign-ins, new device registrations, password resets, and MFA changes. Deletion rules targeting these notifications ensure the victim never sees evidence of the ongoing attack.</li>
+        <li><strong>IT response interference:</strong> Rules that delete or redirect emails from the IT helpdesk or security team prevent the victim from receiving incident response communications.</li>
+      </ul>
+
+      <h3>BEC Enablement</h3>
+      <p>
+        In Business Email Compromise attacks, mailbox rules are the operational foundation that makes the fraud work:
+      </p>
+      <ol>
+        <li>Attacker compromises a finance employee's mailbox and creates forwarding rules</li>
+        <li>Attacker monitors forwarded email for active payment workflows</li>
+        <li>Attacker sends a fraudulent wire transfer request impersonating an executive or vendor</li>
+        <li>The forwarding rule delivers any replies or approval emails to the attacker in real time</li>
+        <li>The attacker intercepts and modifies the conversation as needed to complete the fraud</li>
+      </ol>
+
+      <div class="callout callout-warning">
+        <span class="callout-title">Rules Are Not Visible in Normal Email Clients</span>
+        <p>A victim whose mailbox has a deletion rule removing security alerts has no way to know the rule exists unless they actively check their inbox rule settings. Most users never look. Even IT helpdesk staff closing a ticket after a "resolved" account compromise often don't check.</p>
+      </div>
+    </section>
+
+    <!-- ── 04 DETECTION ── -->
+    <section id="detection" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        Detection &amp; Threat Hunting
+        <span class="section-num">04</span>
+      </h2>
+
+      <h3>Log Sources</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>What to Look For</th>
+              <th>Table (Sentinel)</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="log-source">M365 Unified Audit Log</td>
+              <td><code>New-InboxRule</code> and <code>Set-InboxRule</code> operations; filter specifically for rules with <code>DeleteMessage</code>, <code>ForwardTo</code>, <code>RedirectTo</code>, or <code>MoveToFolder</code> parameters pointing to suspicious destinations</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Free</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Microsoft Defender for Office 365</td>
+              <td>Built-in <strong>Suspicious inbox manipulation rule</strong> alert — fires on rules that forward to external domains or use deletion/move patterns typical of attacker behavior</td>
+              <td><code class="inline">AlertEvidence</code></td>
+              <td><span class="req-badge req-p1">MDO P2</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Microsoft Sentinel</td>
+              <td>Built-in analytics rule template: <strong>Mail redirect via ExO transport rule</strong> and <strong>Suspicious inbox manipulation rule</strong> — deploy and tune before enforcement</td>
+              <td><code class="inline">OfficeActivity</code></td>
+              <td><span class="req-badge req-free">Sentinel Required</span></td>
+            </tr>
+            <tr>
+              <td class="log-source">Defender for Cloud Apps</td>
+              <td>Activity policies targeting <code>New-InboxRule</code> with external forwarding destinations; mass forwarding volume alerts</td>
+              <td><code class="inline">CloudAppEvents</code></td>
+              <td><span class="req-badge req-p2">MDCA License</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-title">Enable Audit Logging First</span>
+        <p>M365 Unified Audit Logging must be enabled for <code>New-InboxRule</code> events to be captured. Verify it is on in the Microsoft Purview Compliance Portal → Audit → confirm "Auditing is on." It is enabled by default for most tenants but can be disabled — verify this before building detections.</p>
+      </div>
+
+      <h3>Hunt Query 1 — Suspicious Inbox Rule Creation</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Inbox rules with suspicious parameters — forwarding, deletion, or move-to-folder
+// This is the core detection for mailbox rule abuse
+OfficeActivity
+| where TimeGenerated > ago(30d)
+| where Operation in ("New-InboxRule", "Set-InboxRule")
+| extend RuleParams = parse_json(tostring(Parameters))
+| where Parameters has_any (
+    "DeleteMessage",
+    "ForwardTo",
+    "RedirectTo",
+    "MoveToFolder",
+    "ForwardAsAttachmentTo"
+  )
+| project
+    TimeGenerated,
+    UserId,
+    Operation,
+    ClientIP,
+    Parameters,
+    ExternalAccess
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 2 — Forwarding Rules with External Destination</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Inbox rules forwarding to addresses outside your organization
+// Replace "yourdomain.com" with your tenant's primary domain
+OfficeActivity
+| where TimeGenerated > ago(30d)
+| where Operation in ("New-InboxRule", "Set-InboxRule")
+| where Parameters has_any ("ForwardTo", "RedirectTo", "ForwardAsAttachmentTo")
+| where Parameters !contains "yourdomain.com"
+| extend ForwardDest = extract(@"ForwardTo.*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", 1, Parameters)
+| project
+    TimeGenerated,
+    UserId,
+    Operation,
+    ForwardDest,
+    Parameters,
+    ClientIP
+| order by TimeGenerated desc</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 3 — Inbox Rule Created Within 1 Hour of a Suspicious Sign-in</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; SigninLogs + OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// High-fidelity: correlate suspicious sign-in with near-immediate inbox rule creation
+// Catches the attacker's first post-access action
+let SuspiciousSignins = SigninLogs
+| where TimeGenerated > ago(30d)
+| where ResultType == 0
+| where RiskLevelDuringSignIn in ("high", "medium")
+    or (tostring(LocationDetails.countryOrRegion) !in ("US") and isnotempty(tostring(LocationDetails.countryOrRegion)))
+// Adjust country filter to your expected user geography
+| project SigninTime = TimeGenerated, UserPrincipalName, SigninIP = IPAddress, RiskLevel = RiskLevelDuringSignIn;
+OfficeActivity
+| where TimeGenerated > ago(30d)
+| where Operation in ("New-InboxRule", "Set-InboxRule")
+| where Parameters has_any ("DeleteMessage", "ForwardTo", "RedirectTo")
+| project RuleTime = TimeGenerated, UserId, Operation, Parameters, ClientIP
+| join kind=inner SuspiciousSignins on $left.UserId == $right.UserPrincipalName
+| where RuleTime between (SigninTime .. (SigninTime + 1h))
+| project SigninTime, RuleTime, UserId, RiskLevel, SigninIP, ClientIP, Operation, Parameters</code></pre>
+        </div>
+      </div>
+
+      <h3>Hunt Query 4 — Enumerate All Active Forwarding Rules (Audit State)</h3>
+      <div class="code-block" data-lang="kql">
+        <div class="code-header">
+          <span class="code-lang">KQL</span>
+          <span class="code-desc">Microsoft Sentinel &mdash; OfficeActivity</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <div class="code-body">
+          <pre><code>// Point-in-time view of forwarding rules created in the past 90 days
+// Useful for incident response: find all external forwards in the tenant
+OfficeActivity
+| where TimeGenerated > ago(90d)
+| where Operation == "New-InboxRule"
+| where Parameters has_any ("ForwardTo", "RedirectTo", "ForwardAsAttachmentTo")
+| summarize
+    RuleCount = count(),
+    LastCreated = max(TimeGenerated),
+    Rules = make_set(Parameters)
+    by UserId
+| order by LastCreated desc</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 05 THREAT ACTORS ── -->
+    <section id="threat-actors" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        Threat Actors
+        <span class="section-num">05</span>
+      </h2>
+
+      <h3>BEC Ecosystem (Broadly)</h3>
+      <p>
+        Mailbox rule manipulation is so universal across BEC operations that it functions as a defining characteristic of the technique class rather than a signature of any one actor. The FBI IC3 BEC report consistently identifies inbox rule creation as a near-universal component of BEC intrusions. Any threat actor conducting email-based fraud in M365 will create inbox rules — it is the operational foundation of the attack.
+      </p>
+
+      <h3>Midnight Blizzard (APT29)</h3>
+      <p>
+        In the Microsoft corporate network intrusion disclosed in January 2024, Midnight Blizzard used mailbox rule manipulation to maintain covert email access to executive accounts for weeks. The rules were designed to forward copies of email related to Microsoft's own investigation into the compromise — giving the attackers visibility into the incident response as it unfolded.
+      </p>
+
+      <h3>Scattered Spider (UNC3944)</h3>
+      <p>
+        Scattered Spider uses inbox rules as a rapid post-MFA-fatigue persistence mechanism. Within minutes of gaining access, rules targeting security notifications are created to buy time before IT detects the compromise. Their campaigns against hospitality and telecommunications companies document this pattern explicitly.
+      </p>
+
+      <h3>Storm-0539 (Atlas Lion)</h3>
+      <p>
+        A financially motivated actor specializing in gift card fraud. Storm-0539 extensively uses inbox rule manipulation in compromised retail and hospitality M365 tenants — forwarding rules on procurement and finance accounts provide the email intelligence needed to intercept gift card order workflows.
+      </p>
+    </section>
+
+    <!-- ── 06 FOLLOW-ON ── -->
+    <section id="follow-on" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </span>
+        Follow-on Activity
+        <span class="section-num">06</span>
+      </h2>
+
+      <ul>
+        <li><strong>Business Email Compromise fraud:</strong> With a forwarding rule providing real-time intelligence, the attacker identifies active payment workflows and initiates fraudulent wire transfers, invoice modifications, or gift card purchase requests.</li>
+        <li><strong>Vendor impersonation:</strong> Email intelligence from the forwarding rule enables the attacker to impersonate vendors by learning their communication patterns, active contracts, and payment terms — crafting highly convincing fraud that recipients have no technical way to distinguish from legitimate correspondence.</li>
+        <li><strong>Credential harvesting from email:</strong> Forwarded email often contains password reset links, MFA enrollment codes, and other credentials that expand the attacker's access beyond the initial victim account.</li>
+        <li><strong>Supply chain compromise:</strong> Access to a compromised account's email allows the attacker to impersonate the victim with their suppliers and customers, extending the compromise to downstream organizations.</li>
+        <li><strong>Long-term surveillance:</strong> Nation-state actors use forwarding rules for intelligence collection — passively receiving copies of email for months without maintaining an active session or creating additional forensic artifacts.</li>
+      </ul>
+    </section>
+
+    <!-- ── 07 PREVENTION ── -->
+    <section id="prevention" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        Prevention
+        <span class="section-num">07</span>
+      </h2>
+
+      <div class="callout callout-info">
+        <span class="callout-title">You Cannot Prevent This Directly — You Must Detect It Immediately</span>
+        <p>Mailbox rule manipulation requires authenticated mailbox access — any control that prevents initial account compromise also prevents this technique. But since a zero-compromise posture is impossible in practice, detection is the critical layer. A fast-triggering alert on <code>New-InboxRule</code> with suspicious parameters is the most actionable control. Deploy it and keep it tuned.</p>
+      </div>
+
+      <h3>Key Controls</h3>
+      <ul>
+        <li>
+          <strong>Alert on suspicious inbox rule creation</strong> — Deploy the Microsoft Sentinel analytics rule template for inbox rule abuse, or configure a Defender for Office 365 P2 alert policy. Set to alert within minutes of a matching rule creation. This is the highest-value, lowest-effort detection for this technique.
+        </li>
+        <li>
+          <strong>Include rule audit in all incident response procedures</strong> — Every M365 incident response checklist must include: run Hunt Query 4 (enumerate all active forwarding rules), check for rules on the compromised account, and delete any unauthorized rules before closing the ticket. Password reset alone is not remediation.
+        </li>
+        <li>
+          <strong>Block legacy authentication</strong> — Legacy auth protocols can be used to access Exchange and create rules without triggering MFA or Conditional Access. Blocking legacy auth closes this path.
+        </li>
+        <li>
+          <strong>Entra ID Protection + Sign-in Risk CA</strong> — Blocking high-risk sign-ins prevents the initial access event that enables rule creation. The closer you are to zero unauthorized access events, the less exposure you have to post-compromise techniques.
+        </li>
+        <li>
+          <strong>Defender for Cloud Apps Activity Policies</strong> — Configure MDCA policies to alert on inbox rule patterns targeting external destinations. MDCA provides richer context than the raw Unified Audit Log alone.
+        </li>
+        <li>
+          <strong>Exchange transport rules (tenant-wide blocks)</strong> — For organizations with low tolerance for external mail forwarding, Exchange Online Transport Rules can block all external email forwarding at the tenant level — rendering user-created forwarding rules inoperative.
+        </li>
+      </ul>
+
+      <p>See the <a href="../hardening.html" style="color:var(--accent);font-weight:600;">Hardening Matrix</a> for implementation complexity and licensing details for each control.</p>
+    </section>
+
+    <!-- ── 08 RESOURCES ── -->
+    <section id="resources" class="attack-section">
+      <h2 class="section-heading">
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+        </span>
+        Further Reading
+        <span class="section-num">08</span>
+      </h2>
+
+      <ul>
+        <li><a href="https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/anti-phishing-policies-about" target="_blank" rel="noopener">Microsoft Learn — Anti-phishing policies in Microsoft 365</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/purview/audit-log-activities" target="_blank" rel="noopener">Microsoft Learn — Audit log activities in Microsoft 365 (Exchange)</a></li>
+        <li><a href="https://attack.mitre.org/techniques/T1114/003/" target="_blank" rel="noopener">MITRE ATT&amp;CK — T1114.003: Email Collection: Email Forwarding Rule</a></li>
+        <li><a href="https://attack.mitre.org/techniques/T1564/008/" target="_blank" rel="noopener">MITRE ATT&amp;CK — T1564.008: Hide Artifacts: Email Hiding Rules</a></li>
+        <li><a href="https://www.ic3.gov/Media/Y2023/PSA230609" target="_blank" rel="noopener">FBI IC3 — Business Email Compromise: The $50 Billion Scam (2023)</a></li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">M365 Identity Threat Codex</div>
+      <div class="footer-sub">Built by <a href="https://github.com/jogit91" target="_blank" rel="noopener">Jake Ouellette</a> &middot; Hosted on GitHub Pages</div>
+    </div>
+    <div class="footer-links">
+      <a href="../index.html">All Attacks</a>
+      <a href="../hardening.html">Hardening Matrix</a>
+      <a href="https://github.com/jogit91/identity_threat_codex" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/main.js"></script>
+</body>
+</html>
