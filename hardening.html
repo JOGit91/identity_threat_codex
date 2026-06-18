@@ -257,68 +257,10 @@
       cursor: help;
       border: none;
     }
-    .cov-dot.cov-3 { background: var(--critical); }
-    .cov-dot.cov-2 { background: var(--high); }
+    .cov-dot.cov-3 { background: #dc2626; }
+    .cov-dot.cov-2 { background: #f97316; }
     .cov-dot.cov-1 { background: #f59e0b; }
     .cov-dot.cov-0 { background: #dde3eb; }
-
-    /* Coverage key legend strip */
-    .coverage-key {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      font-size: 11px;
-      color: var(--text-subtle);
-      margin-bottom: 16px;
-      padding: 8px 14px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      flex-wrap: wrap;
-      row-gap: 6px;
-    }
-    .cov-key-section {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .cov-key-label {
-      font-weight: 700;
-      color: var(--text-muted);
-      white-space: nowrap;
-    }
-    .cov-key-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      white-space: nowrap;
-    }
-    .cov-key-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-    .cov-key-dot.cov-3 { background: var(--critical); }
-    .cov-key-dot.cov-2 { background: var(--high); }
-    .cov-key-dot.cov-1 { background: #f59e0b; }
-    .cov-key-dot.cov-0 { background: #dde3eb; }
-    .cov-key-divider {
-      width: 1px;
-      height: 14px;
-      background: var(--border);
-      flex-shrink: 0;
-    }
-    .cov-key-atk {
-      color: var(--text-subtle);
-      white-space: nowrap;
-    }
-    .cov-key-atk + .cov-key-atk::before {
-      content: "·";
-      margin-right: 10px;
-      color: var(--border);
-    }
 
     /* Score */
     .score-col {
@@ -522,7 +464,6 @@
 
     @media (max-width: 640px) {
       .coverage-row { display: none; }
-      .coverage-key { display: none; }
       .profile-link { display: none; }
       .sort-hint { display: none; }
       .plan-bar-hint { display: none; }
@@ -573,8 +514,6 @@
     <button class="select-all-btn" onclick="selectAll()">Select all</button>
     <span class="sort-hint" id="sort-hint">Grouped by cross-attack coverage score — implement top tier first</span>
   </div>
-
-  <div class="coverage-key" id="coverage-key"></div>
 
   <div class="impl-banner" id="impl-banner" style="display:none">
     <span class="impl-banner-icon">✓</span>
@@ -847,31 +786,8 @@ function updatePlanBar() {
     : "#";
 }
 
-// ── Coverage key legend ──────────────────────────────────
-function renderCoverageKey() {
-  const el = document.getElementById("coverage-key");
-  if (!el) return;
-  const colorMap = {3:"var(--critical)",2:"var(--high)",1:"#f59e0b",0:"#dde3eb"};
-  const atkDots = ATTACKS.map((a, i) =>
-    `<span class="cov-key-item"><span class="cov-key-dot" style="background:var(--text-subtle);opacity:0.5"></span><a class="cov-key-atk" href="${a.url}">${i + 1}. ${a.short}</a></span>`
-  ).join("");
-  const levelItems = [
-    ["Critical","3"],["High","2"],["Partial","1"],["None","0"]
-  ].map(([label,lvl]) =>
-    `<span class="cov-key-item"><span class="cov-key-dot cov-${lvl}"></span>${label}</span>`
-  ).join("");
-  el.innerHTML = `
-    <span class="cov-key-label">Attack order (L→R):</span>
-    <span class="cov-key-section">${atkDots}</span>
-    <span class="cov-key-divider"></span>
-    <span class="cov-key-label">Coverage:</span>
-    <span class="cov-key-section">${levelItems}</span>
-  `;
-}
-
 // ── Init ─────────────────────────────────────────────────
 render();
-renderCoverageKey();
 updateImplBanner();
 </script>
 </body>
